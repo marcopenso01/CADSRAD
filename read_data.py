@@ -13,6 +13,9 @@ import pydicom
 
 import configuration as config
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
+
+
 def makefolder(folder):
     '''
     Helper function to make a new folder if doesn't exist
@@ -24,6 +27,7 @@ def makefolder(folder):
         return True
     return False
   
+    
 def crop_or_pad_slice_to_size(slice, nx, ny):
 
     x, y = slice.shape
@@ -47,7 +51,7 @@ def crop_or_pad_slice_to_size(slice, nx, ny):
     return slice_cropped
   
   
-  def prepare_data((input_folder, output_file, mode, size, target_resolution):
+def prepare_data(input_folder, output_file, mode, size, target_resolution):
     
     '''
     Main function that prepares a dataset from the raw challenge data to an hdf5 dataset
@@ -63,44 +67,84 @@ def crop_or_pad_slice_to_size(slice, nx, ny):
         raise AssertionError('Inadequate number of target resolution parameters')
     
     hdf5_file = h5py.File(output_file, "w")
-    data_addrs = []
-                   
+    
+    count_file = 0  # set count file default
+    count_pat = 0 # set count patient default
+    paths = [input_folder]  # Make stack of paths to process
+    #file_addrs = []
+    pat_addrs = []
+    while paths:
+        with os.scandir(paths.pop()) as entries:
+            for entry in entries:  # loop through the folder
+                if entry.name.find('PA') != -1:
+                    pat_addrs.append(entry.path)
+                    count_pat += 1
+                #if entry.name.endswith('.dcm'):
+                if not entry.is_dir():
+                    #file_addrs.append(entry.path)
+                    count += 1
+                elif entry.is_dir():  #if it is a subfolder
+                    # Add to paths stack to get to it eventually
+                    paths.append(entry.path)
+    
     if mode == '2D':
         nx, ny = size
+        n_file = count_file
                    
     elif mode == '3D':
-        nx, ny, nz_max = size  
-    
-    for CAD in sorted(os.listdir(input_folder)):
-        CAD_path = os.path.join(input_folder, CAD)
-        class_cad =  CAD.split(' rads ')[1]
-                   
-        for fold in os.listdir(CAD_path):
-            fold_path = os.path.join(CAD_path, fold)
-                   
-                   for PAZ in sorted(os.listdir(fold_path)):
-                       PAZ_path = os.path.join(fold_path, PAZ)
-                       
-                       for file in sorted(os.listdir(PAZ_path)):
-                           dcmPath = os.path.join(PAZ_path, file)
-                           data_row_img = pydicom.dcmread(dcmPath)
-                           image = np.int16(data_row_img.pixel_array)
-                           
-    
-    n_data = len(data_addrs)
-                          
-    
-    # Create datasets
-    for i in range(len(data_addrs)):
+        nx, ny, nz_max = size
+        n_file = count_pat
         
-                   
-  def load_and_maybe_process_data(input_folder,
-                                  preprocessing_folder,
-                                  mode,
-                                  size,
-                                  target_resolution,
-                                  force_overwrite=False):
+    else:
+        raise AssertionError('Wrong mode setting. This should never happen.')
+        
+    # Create dataset
     
+    hdf5_file.create_dataset("data", [n_file] + list(size), dtype=np.int16)
+    hdf5_file.create_dataset("patient", [n_file], dtype=np.uint8)
+    hdf5_file.create_dataset("class", [n_file], dtype=np.uint8)
+    
+    logging.info('Parsing image files')
+    
+    for file in range(count_pat):
+        
+        logging.info('----------------------------------------------------------')
+        path_addr = count_pat[file]
+        cad_class = path_addr.split('PA')[1]
+        pat_number = path_addr.split('rads ')[1].split('\\DICOM')[0]
+        logging.info('Doing patient: %s, cad rads class: %s' % (pat_number, cad_class))
+        
+        data_addrs = []
+        
+        for data in sorted(os.listdir(path_addr)):
+            
+            data_addrs.append(os.path.join(path_addr, data))
+        
+        dcmPath = data_addrs[0]
+        data_row = pydicom.dcmread(dcmPath)
+        x = data_row.Rows
+        y = data_row.Columns
+        
+        arr = np.zeros((x,y,len(data_addrs)), dtype=np.int16)
+        
+        
+        
+        
+        
+        data_row_img = np.int16(data_row.pixel_array)
+                           
+    Pixel Spacing
+    Spacing Between Slices
+                          
+           
+       
+def load_and_maybe_process_data(input_folder,
+                                preprocessing_folder,
+                                mode,
+                                size,
+                                target_resolution,
+                                force_overwrite=False):
+        
     '''
     This function is used to load and if necessary preprocesses the dataset
     
@@ -135,8 +179,8 @@ def crop_or_pad_slice_to_size(slice, nx, ny):
     return h5py.File(data_file_path, 'r')
 
 
-  if __name__ == '__main__':
-    
+if __name__ == '__main__':
+
     # Paths settings
     input_folder = config.data_root
     preprocessing_folder = config.preprocessing_folder
