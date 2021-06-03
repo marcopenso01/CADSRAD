@@ -16,3 +16,9 @@ weights_root = os.path.join(log_root, experiment_name)
 data_mode = '2D'   #2D or 3D
 image_size = (212, 212)
 target_resolution = (1, 1)
+
+# Pre-process settings
+standardize = False
+normalize = True
+min = -1
+max = 1
