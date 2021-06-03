@@ -7,6 +7,7 @@ import gc
 import h5py
 from skimage import transform
 from skimage import util
+from skimage import measure
 import cv2
 from PIL import Image
 import pydicom
@@ -49,8 +50,70 @@ def crop_or_pad_slice_to_size(slice, nx, ny):
             slice_cropped[x_c:x_c + x, y_c:y_c + y] = slice[:, :]
 
     return slice_cropped
-  
-  
+
+
+def standardize_image(image):
+    '''
+    make image zero mean and unit standard deviation
+    '''
+
+    img_o = np.float32(image.copy())
+    m = np.mean(img_o)
+    s = np.std(img_o)
+    return np.divide((img_o - m), s)
+
+
+def normalize_image(image):
+    '''
+    make image normalize between 0 and 1
+    '''
+    img_o = np.float32(image.copy())
+    #img_o = 2*((img_o-img_o.min())/(img_o.max()-img_o.min()))-1
+    img_o = (img_o-img_o.min())/(img_o.max()-img_o.min())
+    return img_o
+
+
+def get_pixeldata(dicom_path):
+    
+    '''
+    return an ndarray of the Pixel Data
+    '''
+    dicom_dataset = pydicom.dcmread(dicom_path)
+    if 'PixelData' not in dicom_dataset:
+        raise TypeError("No pixel data found in this dataset.")
+    
+    # Make NumPy format code, e.g. "uint16", "int32" etc
+    # from two pieces of info:
+    # dicom_dataset.PixelRepresentation -- 0 for unsigned, 1 for signed;
+    # dicom_dataset.BitsAllocated -- 8, 16, or 32
+    if dicom_dataset.BitsAllocated == 1:
+        # single bits are used for representation of binary data
+        format_str = 'uint8'
+    elif dicom_dataset.PixelRepresentation == 0:
+        format_str = 'uint{}'.format(dicom_dataset.BitsAllocated)
+    elif dicom_dataset.PixelRepresentation == 1:
+        format_str = 'int{}'.format(dicom_dataset.BitsAllocated)
+    else:
+        format_str = 'bad_pixel_representation'
+    try:
+        numpy_dtype = np.dtype(format_str)
+    except TypeError:
+        msg = ("Data type not understood by NumPy: "
+               "format='{}', PixelRepresentation={}, "
+               "BitsAllocated={}".format(
+                   format_str,
+                   dicom_dataset.PixelRepresentation,
+                   dicom_dataset.BitsAllocated))
+        raise TypeError(msg)
+    
+    pixel_array = dicom_dataset.pixel_array
+    if dicom_dataset.Modality.lower().find('ct') >= 0:
+        pixel_array = pixel_array * dicom_dataset.RescaleSlope + dicom_dataset.RescaleIntercept  # Obtain the CT value of the image
+    pixel_array = pixel_array.astype(numpy_dtype)
+    
+    return pixel_array, dicom_dataset.Rows, dicom_dataset.Columns, numpy_dtype, dicom_dataset.PixelSpacing, abs(dicom_dataset.SpacingBetweenSlices)
+    
+    
 def prepare_data(input_folder, output_file, mode, size, target_resolution):
     
     '''
@@ -82,7 +145,7 @@ def prepare_data(input_folder, output_file, mode, size, target_resolution):
                 #if entry.name.endswith('.dcm'):
                 if not entry.is_dir():
                     #file_addrs.append(entry.path)
-                    count += 1
+                    count_file += 1
                 elif entry.is_dir():  #if it is a subfolder
                     # Add to paths stack to get to it eventually
                     paths.append(entry.path)
@@ -100,7 +163,7 @@ def prepare_data(input_folder, output_file, mode, size, target_resolution):
         
     # Create dataset
     
-    hdf5_file.create_dataset("data", [n_file] + list(size), dtype=np.int16)
+    hdf5_file.create_dataset("data", [n_file] + list(size), dtype=np.float32)
     hdf5_file.create_dataset("patient", [n_file], dtype=np.uint8)
     hdf5_file.create_dataset("class", [n_file], dtype=np.uint8)
     
@@ -114,30 +177,44 @@ def prepare_data(input_folder, output_file, mode, size, target_resolution):
         pat_number = path_addr.split('rads ')[1].split('\\DICOM')[0]
         logging.info('Doing patient: %s, cad rads class: %s' % (pat_number, cad_class))
         
-        data_addrs = []
+        img = []
         
         for data in sorted(os.listdir(path_addr)):
             
-            data_addrs.append(os.path.join(path_addr, data))
+            dcmPath = os.path.join(path_addr, data)
+            pixel_array, x, y, numpy_dtype, PixelSpacing, SpacingBetweenSlices = get_pixeldata(dcmPath)
+            
+            #pre-process
+            if config.standardize:
+                pixel_array = standardize_image(pixel_array)
+            if config.normalize:
+                pixel_array = normalize_image(pixel_array)
+                
+            img.append(pixel_array)
         
-        dcmPath = data_addrs[0]
-        data_row = pydicom.dcmread(dcmPath)
-        x = data_row.Rows
-        y = data_row.Columns
+        img = np.array(img)  # array shape [N,x,y]
+        img = img.transpose([1,2,0]) # array shape [x,y,N]
         
-        arr = np.zeros((x,y,len(data_addrs)), dtype=np.int16)
+         ### PROCESSING LOOP FOR 3D DATA ################################
+            if mode == '3D':
+                
+                scale_vector = [PixelSpacing[0] / target_resolution[0],
+                                PixelSpacing[1] / target_resolution[1],
+                                SpacingBetweenSlices/ target_resolution[2]]
+
+                img_scaled = transform.rescale(img,
+                                               scale_vector,
+                                               order=1,
+                                               preserve_range=True,
+                                               multichannel=False,
+                                               mode='constant')
+                
+                slice_vol = np.zeros((nx, ny, nz_max), dtype=np.float32)
+                
+                nz_curr = img_scaled.shape[2]
         
         
         
-        
-        
-        data_row_img = np.int16(data_row.pixel_array)
-                           
-    Pixel Spacing
-    Spacing Between Slices
-                          
-           
-       
 def load_and_maybe_process_data(input_folder,
                                 preprocessing_folder,
                                 mode,
