@@ -164,8 +164,10 @@ def prepare_data(input_folder, output_file, mode, size, target_resolution):
     # Create dataset
     
     hdf5_file.create_dataset("data", [n_file] + list(size), dtype=np.float32)
-    hdf5_file.create_dataset("patient", [n_file], dtype=np.uint8)
-    hdf5_file.create_dataset("class", [n_file], dtype=np.uint8)
+    hdf5_file.create_dataset("patient", (n_file,), dtype=np.uint8)
+    hdf5_file.create_dataset("class", (n_file,), dtype=np.uint8)
+    
+    count = 0
     
     logging.info('Parsing image files')
     
@@ -173,8 +175,8 @@ def prepare_data(input_folder, output_file, mode, size, target_resolution):
         
         logging.info('----------------------------------------------------------')
         path_addr = count_pat[file]
-        cad_class = path_addr.split('PA')[1]
-        pat_number = path_addr.split('rads ')[1].split('\\DICOM')[0]
+        pat_number = path_addr.split('PA')[1]
+        cad_class = path_addr.split('rads ')[1].split('\\DICOM')[0]
         logging.info('Doing patient: %s, cad rads class: %s' % (pat_number, cad_class))
         
         img = []
@@ -195,9 +197,9 @@ def prepare_data(input_folder, output_file, mode, size, target_resolution):
         img = np.array(img)  # array shape [N,x,y]
         img = img.transpose([1,2,0]) # array shape [x,y,N]
         
-         ### PROCESSING LOOP FOR 3D DATA ################################
+        ### PROCESSING LOOP FOR 3D DATA ################################
             if mode == '3D':
-                
+                               
                 scale_vector = [PixelSpacing[0] / target_resolution[0],
                                 PixelSpacing[1] / target_resolution[1],
                                 SpacingBetweenSlices/ target_resolution[2]]
@@ -209,12 +211,68 @@ def prepare_data(input_folder, output_file, mode, size, target_resolution):
                                                multichannel=False,
                                                mode='constant')
                 
-                slice_vol = np.zeros((nx, ny, nz_max), dtype=np.float32)
-                
                 nz_curr = img_scaled.shape[2]
+                
+                if nz_max > 0:
+                     
+                    slice_vol = np.zeros((nx, ny, nz_max), dtype=np.float32)
+
+                    stack_from = (nz_max - nz_curr) // 2
+
+                    if stack_from < 0:
+                        raise AssertionError('nz_max is too small for the chosen through plane resolution. Consider changing'
+                                             'the size or the target resolution in the through-plane.')
+
+                    for zz in range(nz_curr):
+
+                        slice_rescaled = img_scaled[:,:,zz]
+                        slice_cropped = crop_or_pad_slice_to_size(slice_rescaled, nx, ny)
+                        slice_vol[:,:,stack_from] = slice_cropped   # padding VOI (volume of interest)
+
+                        stack_from += 1
+                  
+                else:
+                    
+                    slice_vol = np.zeros((nx, ny, nz_curr), dtype=np.float32)
+                    
+                    for zz in range(nz_curr):
+
+                        slice_rescaled = img_scaled[:,:,zz]
+                        slice_cropped = crop_or_pad_slice_to_size(slice_rescaled, nx, ny)
+                        slice_vol[:,:,zz] = slice_cropped   # padding VOI (volume of interest)
+
+                hdf5_file["data"][file, ...] = slice_vol[None]
+                hdf5_file["patient"][file, ...] = int(pat_number)
+                hdf5_file["class"][file, ...] = int(cad_class)
+            
+        ### PROCESSING LOOP FOR 2D DATA ################################
+            if mode == '2D':
+                
+                scale_vector = [PixelSpacing[0] / target_resolution[0],
+                                PixelSpacing[1] / target_resolution[1]]
+                
+                for zz in range(img.shape[2]):
+                    
+                    slice_img = np.squeeze(img[:, :, zz])
+                    slice_rescaled = transform.rescale(slice_img,
+                                                       scale_vector,
+                                                       order=1,
+                                                       preserve_range=True,
+                                                       multichannel=False,
+                                                       mode = 'constant')
+                    
+                    slice_cropped = crop_or_pad_slice_to_size(slice_rescaled, nx, ny)
+                    
+                    hdf5_file["data"][count, ...] = slice_cropped[None]
+                    hdf5_file["patient"][count, ...] = int(pat_number)
+                    hdf5_file["class"][count, ...] = int(cad_class)
+                    
+                    count += 1    
         
-        
-        
+    # After loop:
+    hdf5_file.close()
+    
+    
 def load_and_maybe_process_data(input_folder,
                                 preprocessing_folder,
                                 mode,
