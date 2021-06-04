@@ -174,7 +174,7 @@ def prepare_data(input_folder, output_file, mode, size, target_resolution):
     for file in range(count_pat):
         
         logging.info('----------------------------------------------------------')
-        path_addr = count_pat[file]
+        path_addr = pat_addrs[file]
         pat_number = path_addr.split('PA')[1]
         cad_class = path_addr.split('rads ')[1].split('\\DICOM')[0]
         logging.info('Doing patient: %s, cad rads class: %s' % (pat_number, cad_class))
