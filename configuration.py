@@ -4,7 +4,7 @@ import os
 import socket
 import logging
 
-experiment_name = 'prova'
+experiment_name = 'prova1'
 
 # Model settings
 model_handle = model_structure.Unet
