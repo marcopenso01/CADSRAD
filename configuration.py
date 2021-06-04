@@ -4,6 +4,11 @@ import os
 import socket
 import logging
 
+experiment_name = 'prova'
+
+# Model settings
+model_handle = model_structure.Unet
+
 # Paths settings
 data_root = '/content/drive/My Drive/Pazienti/train'      
 test_data_root = '/content/drive/My Drive/Pazieni/test'
