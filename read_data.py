@@ -1,16 +1,13 @@
+"""
+@author: Marco Penso
+"""
 import os
-import glob
 import numpy as np
 import logging
-import nibabel as nib
-import gc
 import h5py
 from skimage import transform
-from skimage import util
-from skimage import measure
-import cv2
-from PIL import Image
 import pydicom
+from sklearn.model_selection import train_test_split
 
 import configuration as config
 
@@ -110,8 +107,11 @@ def get_pixeldata(dicom_path):
     if dicom_dataset.Modality.lower().find('ct') >= 0:
         pixel_array = pixel_array * dicom_dataset.RescaleSlope + dicom_dataset.RescaleIntercept  # Obtain the CT value of the image
     pixel_array = pixel_array.astype(numpy_dtype)
-    
-    return pixel_array, dicom_dataset.Rows, dicom_dataset.Columns, numpy_dtype, dicom_dataset.PixelSpacing, abs(dicom_dataset.SpacingBetweenSlices)
+    if 'SpacingBetweenSlices' in dicom_dataset:
+        z = abs(dicom_dataset.SpacingBetweenSlices)
+    elif 'SliceThickness' in dicom_dataset:
+        z = abs(dicom_dataset.SliceThickness)
+    return pixel_array, dicom_dataset.Rows, dicom_dataset.Columns, numpy_dtype, dicom_dataset.PixelSpacing, z
     
     
 def prepare_data(input_folder, output_file, mode, size, target_resolution):
@@ -129,145 +129,176 @@ def prepare_data(input_folder, output_file, mode, size, target_resolution):
     if mode == '3D' and not len(target_resolution) == 3:
         raise AssertionError('Inadequate number of target resolution parameters')
     
-    hdf5_file = h5py.File(output_file, "w")
+    if config.split_val_train < 0 or config.split_val_train > 1:
+        raise AssertionError('Inadequate number of split_val_train parameters')
     
-    count_file = 0  # set count file default
-    count_pat = 0 # set count patient default
+    hdf5_file = h5py.File(output_file, "w")
+                 
+    #count_file = 0  # set count file default
+    #count_pat = 0 # set count patient default
     paths = [input_folder]  # Make stack of paths to process
     #file_addrs = []
     pat_addrs = []
+    
     while paths:
         with os.scandir(paths.pop()) as entries:
             for entry in entries:  # loop through the folder
                 if entry.name.find('PA') != -1:
                     pat_addrs.append(entry.path)
-                    count_pat += 1
+                    #count_pat += 1
                 #if entry.name.endswith('.dcm'):
-                if not entry.is_dir():
+                #if not entry.is_dir():
                     #file_addrs.append(entry.path)
-                    count_file += 1
+                    #count_file += 1
                 elif entry.is_dir():  #if it is a subfolder
                     # Add to paths stack to get to it eventually
                     paths.append(entry.path)
     
-    if mode == '2D':
+    train_addrs = []
+    test_addrs = []
+    
+    if config.split_val_train:
+        
+        classes = []
+        for i in range(len(pat_addrs)):
+            classes.append(pat_addrs[i].split('rads ')[1].split('\\DICOM')[0])
+        train_addrs, test_addrs = train_test_split(pat_addrs, test_size=config.split_val_train, stratify=classes)
+        
+    else:
+        
+        train_addrs = pat_addrs
+    
+    num_slices = {'test': 0, 'train': 0}
+    file_list = {'test': test_addrs, 'train': train_addrs}
+    
+    if mode == '2D':   
+        
         nx, ny = size
-        n_file = count_file
+        for i in range(len(test_addrs)):
+            num_slices['test'] += len(os.listdir(test_addrs[i]))
+        for i in range(len(train_addrs)):
+            num_slices['train'] += len(os.listdir(train_addrs[i]))
                    
     elif mode == '3D':
+        
         nx, ny, nz_max = size
-        n_file = count_pat
+        num_slices['train'] = len(train_addrs)
+        num_slices['test'] = len(test_addrs)
         
     else:
         raise AssertionError('Wrong mode setting. This should never happen.')
         
     # Create dataset
-    
-    hdf5_file.create_dataset("data", [n_file] + list(size), dtype=np.float32)
-    hdf5_file.create_dataset("patient", (n_file,), dtype=np.uint8)
-    hdf5_file.create_dataset("class", (n_file,), dtype=np.uint8)
-    
-    count = 0
+    for tt in ['train', 'test']:
+        
+        hdf5_file.create_dataset('data_%s' % tt, [num_slices[tt]] + list(size), dtype=np.float32)
+        hdf5_file.create_dataset(str('patient_' + tt), (num_slices[tt],), dtype=np.uint8)
+        hdf5_file.create_dataset(str('classe_' + tt), (num_slices[tt],), dtype=np.uint8)
     
     logging.info('Parsing image files')
     
-    for file in range(count_pat):
+    train_test_range = ['test', 'train'] if config.split_val_train else ['train']
+    for train_test in train_test_range:
         
-        logging.info('----------------------------------------------------------')
-        path_addr = pat_addrs[file]
-        pat_number = path_addr.split('PA')[1]
-        cad_class = path_addr.split('rads ')[1].split('\\DICOM')[0]
-        logging.info('Doing patient: %s, cad rads class: %s' % (pat_number, cad_class))
+        count = 0
         
-        img = []
-        
-        for data in sorted(os.listdir(path_addr)):
-            
-            dcmPath = os.path.join(path_addr, data)
-            pixel_array, x, y, numpy_dtype, PixelSpacing, SpacingBetweenSlices = get_pixeldata(dcmPath)
-            
-            #pre-process
-            if config.standardize:
-                pixel_array = standardize_image(pixel_array)
-            if config.normalize:
-                pixel_array = normalize_image(pixel_array)
-                
-            img.append(pixel_array)
-        
-        img = np.array(img)  # array shape [N,x,y]
-        img = img.transpose([1,2,0]) # array shape [x,y,N]
-        
-        ### PROCESSING LOOP FOR 3D DATA ################################
-        if mode == '3D':
+        for file in range(len(file_list[train_test])):
 
-            scale_vector = [PixelSpacing[0] / target_resolution[0],
-                            PixelSpacing[1] / target_resolution[1],
-                            SpacingBetweenSlices/ target_resolution[2]]
+            logging.info('----------------------------------------------------------')
+            path_addr = file_list[train_test][file]
+            pat_number = path_addr.split('PA')[1]
+            cad_class = path_addr.split('rads ')[1].split('\\DICOM')[0]
+            logging.info('Doing cad class: %s, patient: %s' % (cad_class, pat_number))
 
-            img_scaled = transform.rescale(img,
-                                           scale_vector,
-                                           order=1,
-                                           preserve_range=True,
-                                           multichannel=False,
-                                           mode='constant')
+            img = []
 
-            nz_curr = img_scaled.shape[2]
+            for data in sorted(os.listdir(path_addr)):
 
-            if nz_max > 0:
+                dcmPath = os.path.join(path_addr, data)
+                pixel_array, x, y, numpy_dtype, PixelSpacing, SpacingBetweenSlices = get_pixeldata(dcmPath)
 
-                slice_vol = np.zeros((nx, ny, nz_max), dtype=np.float32)
+                #pre-process
+                if config.standardize:
+                    pixel_array = standardize_image(pixel_array)
+                if config.normalize:
+                    pixel_array = normalize_image(pixel_array)
 
-                stack_from = (nz_max - nz_curr) // 2
+                img.append(pixel_array)
 
-                if stack_from < 0:
-                    raise AssertionError('nz_max is too small for the chosen through plane resolution. Consider changing'
-                                         'the size or the target resolution in the through-plane.')
+            img = np.array(img)  # array shape [N,x,y]
+            img = img.transpose([1,2,0]) # array shape [x,y,N]
 
-                for zz in range(nz_curr):
+            ### PROCESSING LOOP FOR 3D DATA ################################
+            if mode == '3D':
 
-                    slice_rescaled = img_scaled[:,:,zz]
+                scale_vector = [PixelSpacing[0] / target_resolution[0],
+                                PixelSpacing[1] / target_resolution[1],
+                                SpacingBetweenSlices/ target_resolution[2]]
+
+                img_scaled = transform.rescale(img,
+                                               scale_vector,
+                                               order=1,
+                                               preserve_range=True,
+                                               multichannel=False,
+                                               mode='constant')
+
+                nz_curr = img_scaled.shape[2]
+
+                if nz_max > 0:
+
+                    slice_vol = np.zeros((nx, ny, nz_max), dtype=np.float32)
+
+                    stack_from = (nz_max - nz_curr) // 2
+
+                    if stack_from < 0:
+                        raise AssertionError('nz_max is too small for the chosen through plane resolution. Consider changing'
+                                             'the size or the target resolution in the through-plane.')
+
+                    for zz in range(nz_curr):
+
+                        slice_rescaled = img_scaled[:,:,zz]
+                        slice_cropped = crop_or_pad_slice_to_size(slice_rescaled, nx, ny)
+                        slice_vol[:,:,stack_from] = slice_cropped   # padding VOI (volume of interest)
+
+                        stack_from += 1
+
+                else:
+
+                    slice_vol = np.zeros((nx, ny, nz_curr), dtype=np.float32)
+
+                    for zz in range(nz_curr):
+
+                        slice_rescaled = img_scaled[:,:,zz]
+                        slice_cropped = crop_or_pad_slice_to_size(slice_rescaled, nx, ny)
+                        slice_vol[:,:,zz] = slice_cropped   # padding VOI (volume of interest)
+
+                hdf5_file[str('data_'+ train_test)][file, ...] = slice_vol[None]
+                hdf5_file[str('patient_' + train_test)][file, ...] = int(pat_number)
+                hdf5_file[str('classe_' + train_test)][file, ...] = int(cad_class)
+
+            ### PROCESSING LOOP FOR 2D DATA ################################
+            if mode == '2D':
+
+                scale_vector = [PixelSpacing[0] / target_resolution[0],
+                                PixelSpacing[1] / target_resolution[1]]
+
+                for zz in range(img.shape[2]):
+
+                    slice_img = np.squeeze(img[:, :, zz])
+                    slice_rescaled = transform.rescale(slice_img,
+                                                       scale_vector,
+                                                       order=1,
+                                                       preserve_range=True,
+                                                       multichannel=False,
+                                                       mode = 'constant')
+
                     slice_cropped = crop_or_pad_slice_to_size(slice_rescaled, nx, ny)
-                    slice_vol[:,:,stack_from] = slice_cropped   # padding VOI (volume of interest)
 
-                    stack_from += 1
+                    hdf5_file[str('data_'+ train_test)][count, ...] = slice_cropped[None]
+                    hdf5_file[str('patient_' + train_test)][count, ...] = int(pat_number)
+                    hdf5_file[str('classe_' + train_test)][count, ...] = int(cad_class)
 
-            else:
-
-                slice_vol = np.zeros((nx, ny, nz_curr), dtype=np.float32)
-
-                for zz in range(nz_curr):
-
-                    slice_rescaled = img_scaled[:,:,zz]
-                    slice_cropped = crop_or_pad_slice_to_size(slice_rescaled, nx, ny)
-                    slice_vol[:,:,zz] = slice_cropped   # padding VOI (volume of interest)
-
-            hdf5_file["data"][file, ...] = slice_vol[None]
-            hdf5_file["patient"][file, ...] = int(pat_number)
-            hdf5_file["class"][file, ...] = int(cad_class)
-            
-        ### PROCESSING LOOP FOR 2D DATA ################################
-        if mode == '2D':
-
-            scale_vector = [PixelSpacing[0] / target_resolution[0],
-                            PixelSpacing[1] / target_resolution[1]]
-
-            for zz in range(img.shape[2]):
-
-                slice_img = np.squeeze(img[:, :, zz])
-                slice_rescaled = transform.rescale(slice_img,
-                                                   scale_vector,
-                                                   order=1,
-                                                   preserve_range=True,
-                                                   multichannel=False,
-                                                   mode = 'constant')
-
-                slice_cropped = crop_or_pad_slice_to_size(slice_rescaled, nx, ny)
-
-                hdf5_file["data"][count, ...] = slice_cropped[None]
-                hdf5_file["patient"][count, ...] = int(pat_number)
-                hdf5_file["class"][count, ...] = int(cad_class)
-
-                count += 1    
+                    count += 1    
         
     # After loop:
     hdf5_file.close()
