@@ -1,8 +1,5 @@
 import model_structure
-import tensorflow as tf
 import os
-import socket
-import logging
 
 experiment_name = 'prova1'
 
