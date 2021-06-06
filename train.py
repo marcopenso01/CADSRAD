@@ -43,7 +43,7 @@ def get_latest_model_checkpoint_path(folder, name):
 
 def run_training(continue_run):
         
-        logging.info('EXPERIMENT NAME: %s' % exp_config.experiment_name)
+        logging.info('EXPERIMENT NAME: %s' % config.experiment_name)
         
         init_step = 0
         
@@ -58,7 +58,6 @@ def run_training(continue_run):
             logging.warning('!!! Didnt find init checkpoint. Maybe first run failed. Disabling continue mode...')
             continue_run = False
             init_step = 0
-        
         
         # load data
         data = read_data.load_and_maybe_process_data(
