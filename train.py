@@ -1,3 +1,6 @@
+"""
+@author: Marco Penso
+"""
 import os
 import numpy as np
 import logging
@@ -5,9 +8,13 @@ import cv2
 import shutil
 import pandas as pd # for some simple data analysis (right now, just to load in the labels data and quickly reference it)
 import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator 
+from tensorflow.keras import layers 
+from tensorflow.keras import Model 
 
 import configuration as config
 import read_data
+import model_zoo as model_Zoo
 
 # Set SGE_GPU environment
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -41,6 +48,11 @@ def get_latest_model_checkpoint_path(folder, name):
     return os.path.join(folder, name + '-' + str(latest_iteration))
 
 
+def augmentation_function(images, labels):
+    
+    
+    
+
 def run_training(continue_run):
         
         logging.info('EXPERIMENT NAME: %s' % config.experiment_name)
@@ -68,7 +80,52 @@ def run_training(continue_run):
                 target_resolution=config.target_resolution,
                 force_overwrite=False
             )
+        
+        # the following are HDF5 datasets, not numpy arrays
+        imgs_train = data['data_train'][()]
+        patient_train = data['patient_train'][()]
+        class_train = data['classe_train'][()]
 
+        if 'data_test' in data:
+            imgs_val = data['data_test'][()]
+            patient_val = data['patient_test'][()]
+            class_val = data['classe_test'][()]
+        
+        logging.info('Data summary:')
+        logging.info(' - Training Images:')
+        logging.info(imgs_train.shape)
+        logging.info(imgs_train.dtype)
+        logging.info(' - Validation Images:')
+        logging.info(imgs_val.shape)
+        logging.info(imgs_val.dtype)
+        
+        if config.data_mode == '2D': 
+            nchannels = 1
+            
+        elif config.data_modo == '3D':
+            nchannels = imgs_train.shape[-1]
+        
+        imgs_train = imgs_train[...,np.newaxis]
+        if 'data_test' in data:
+            imgs_val = imgs_val[...,np.newaxis]
+        
+        train_loader = tf.data.Dataset.from_tensor_slices((imgs_train, class_train))
+        validation_loader = tf.data.Dataset.from_tensor_slices((imgs_val, class_val))
+        
+        train_dataset = (
+            train_loader.shuffle(len(imgs_train))
+            .map(augmentation_function)
+            .batch(config.batch_size)
+            .prefetch(2)
+        )
+        
+        # Build a model
+        model = model_zoo.get_model(imgs_train)
+        model.summary()
+        
+        
+
+        
 
 def main():
 
