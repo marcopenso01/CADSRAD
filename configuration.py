@@ -1,3 +1,6 @@
+"""
+@author: Marco Penso
+"""
 import model_structure
 import os
 
