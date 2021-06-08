@@ -21,7 +21,9 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 # The GPU id to use, usually either "0" or "1"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
+logging.basicConfig(
+    level=logging.INFO # allow DEBUG level messages to pass through the logger
+    )
 
 log_dir = os.path.join(config.log_root, config.experiment_name)
 
@@ -112,15 +114,18 @@ def run_training(continue_run):
         train_loader = tf.data.Dataset.from_tensor_slices((imgs_train, class_train))
         validation_loader = tf.data.Dataset.from_tensor_slices((imgs_val, class_val))
         
+        '''
+        
         train_dataset = (
             train_loader.shuffle(len(imgs_train))
             .map(augmentation_function)
             .batch(config.batch_size)
             .prefetch(2)
         )
+        '''
         
         # Build a model
-        model = model_zoo.get_model(imgs_train)
+        model = model_zoo.get_model(imgs_train, config)
         model.summary()
         
         
