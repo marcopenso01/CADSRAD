@@ -6,8 +6,8 @@ import os
 experiment_name = 'prova1'
 
 # Model settings
-model_handle = model_zoo.VGG16model
-#model_handle = model_zoo.ResNet50V2model
+model_handle = model_zoo.VGG16_model
+#model_handle = model_zoo.InceptionV3_model
 
 # Paths settings
 data_root = '/content/drive/My Drive/Pazienti/train'      
