@@ -6,12 +6,6 @@ from tensorflow.keras import layers
 from tensorflow.keras import Model 
 from tensorflow.keras.layers import *
 
-from tensorflow.keras.applications import ResNet50
-from tensorflow.keras.applications import InceptionResNetV2
-from tensorflow.keras.applications import EfficientNetB0
-from tensorflow.keras.applications import EfficientNetB7
-from tensorflow.keras.applications import ResNet50V2
-
 
 def VGG16_model(input_tensor, config):
   
