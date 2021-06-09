@@ -110,7 +110,252 @@ def InceptionV3_model(input_tensor, config):
   
   return model
                 
- 
+
+def ResNet50_model(input_tensor, config):
+  
+  mode = config.data_mode
+  
+  if mode == '2D':
+      
+      if input_tensor.shape[-1] != 1:
+         raise AssertionError('Inadequate input tensor shape. The input must have 1 channels')
+      else:
+         input_tensor_shape = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], 1))
+         images = Concatenate(axis=-1)([input_tensor_shape, input_tensor_shape, input_tensor_shape])
+  
+  if mode == '3D':
+      
+      if input_tensor.shape[-1] != 3:
+         raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
+      else:
+         images = Input()
+                 
+  from tensorflow.keras.applications import ResNet50
+  
+  base_model = VGG16(input_tensor = images,
+                     include_top = False,
+                     weights = 'imagenet')
+  
+  base_model.trainable = False
+  
+  x = layers.Flatten()(base_model.output)
+
+  if len(config.dense_layer) != len(config.drop_rate):
+      raise AssertionError('Inadequate model settings')
+  
+  else:
+      
+     for ii in range(len(config.dense_layer)):
+
+         x = layers.Dense(config.dense_layer[ii], kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='relu')(x)
+
+         if config.drop_rate[ii] > 0 and config.drop_rate[ii] < 1:
+
+            x = layers.Dropout(config.drop_rate[ii])(x)
+
+  output = layers.Dense(config.nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+
+  model = Model(base_model.input, output, name='ResNet50')
+  
+  return model
+
+
+def InceptionResNetV2_model(input_tensor, config):
+  
+  mode = config.data_mode
+  
+  if mode == '2D':
+      
+      if input_tensor.shape[-1] != 1:
+         raise AssertionError('Inadequate input tensor shape. The input must have 1 channels')
+      else:
+         input_tensor_shape = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], 1))
+         images = Concatenate(axis=-1)([input_tensor_shape, input_tensor_shape, input_tensor_shape])
+  
+  if mode == '3D':
+      
+      if input_tensor.shape[-1] != 3:
+         raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
+      else:
+         images = Input()
+                 
+  from tensorflow.keras.applications import InceptionResNetV2
+  
+  base_model = VGG16(input_tensor = images,
+                     include_top = False,
+                     weights = 'imagenet')
+  
+  base_model.trainable = False
+  
+  x = layers.Flatten()(base_model.output)
+
+  if len(config.dense_layer) != len(config.drop_rate):
+      raise AssertionError('Inadequate model settings')
+  
+  else:
+      
+     for ii in range(len(config.dense_layer)):
+
+         x = layers.Dense(config.dense_layer[ii], kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='relu')(x)
+
+         if config.drop_rate[ii] > 0 and config.drop_rate[ii] < 1:
+
+            x = layers.Dropout(config.drop_rate[ii])(x)
+
+  output = layers.Dense(config.nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+
+  model = Model(base_model.input, output, name='InceptionResNetV2')
+  
+  return model
+
+
+def EfficientNetB0_model(input_tensor, config):
+  
+  mode = config.data_mode
+  
+  if mode == '2D':
+      
+      if input_tensor.shape[-1] != 1:
+         raise AssertionError('Inadequate input tensor shape. The input must have 1 channels')
+      else:
+         input_tensor_shape = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], 1))
+         images = Concatenate(axis=-1)([input_tensor_shape, input_tensor_shape, input_tensor_shape])
+  
+  if mode == '3D':
+      
+      if input_tensor.shape[-1] != 3:
+         raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
+      else:
+         images = Input()
+                 
+  from tensorflow.keras.applications import EfficientNetB0
+  
+  base_model = VGG16(input_tensor = images,
+                     include_top = False,
+                     weights = 'imagenet')
+  
+  base_model.trainable = False
+  
+  x = layers.Flatten()(base_model.output)
+
+  if len(config.dense_layer) != len(config.drop_rate):
+      raise AssertionError('Inadequate model settings')
+  
+  else:
+      
+     for ii in range(len(config.dense_layer)):
+
+         x = layers.Dense(config.dense_layer[ii], kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='relu')(x)
+
+         if config.drop_rate[ii] > 0 and config.drop_rate[ii] < 1:
+
+            x = layers.Dropout(config.drop_rate[ii])(x)
+
+  output = layers.Dense(config.nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+
+  model = Model(base_model.input, output, name='EfficientNetB0')
+  
+  return model
+
+
+def EfficientNetB7_model(input_tensor, config):
+  
+  mode = config.data_mode
+  
+  if mode == '2D':
+      
+      if input_tensor.shape[-1] != 1:
+         raise AssertionError('Inadequate input tensor shape. The input must have 1 channels')
+      else:
+         input_tensor_shape = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], 1))
+         images = Concatenate(axis=-1)([input_tensor_shape, input_tensor_shape, input_tensor_shape])
+  
+  if mode == '3D':
+      
+      if input_tensor.shape[-1] != 3:
+         raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
+      else:
+         images = Input()
+                 
+  from tensorflow.keras.applications import EfficientNetB7
+  
+  base_model = VGG16(input_tensor = images,
+                     include_top = False,
+                     weights = 'imagenet')
+  
+  base_model.trainable = False
+  
+  x = layers.Flatten()(base_model.output)
+
+  if len(config.dense_layer) != len(config.drop_rate):
+      raise AssertionError('Inadequate model settings')
+  
+  else:
+      
+     for ii in range(len(config.dense_layer)):
+
+         x = layers.Dense(config.dense_layer[ii], kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='relu')(x)
+
+         if config.drop_rate[ii] > 0 and config.drop_rate[ii] < 1:
+
+            x = layers.Dropout(config.drop_rate[ii])(x)
+
+  output = layers.Dense(config.nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+
+  model = Model(base_model.input, output, name='EfficientNetB7')
+  
+  return model
+
+
+def ResNet50V2_model(input_tensor, config):
+  
+  mode = config.data_mode
+  
+  if mode == '2D':
+      
+      if input_tensor.shape[-1] != 1:
+         raise AssertionError('Inadequate input tensor shape. The input must have 1 channels')
+      else:
+         input_tensor_shape = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], 1))
+         images = Concatenate(axis=-1)([input_tensor_shape, input_tensor_shape, input_tensor_shape])
+  
+  if mode == '3D':
+      
+      if input_tensor.shape[-1] != 3:
+         raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
+      else:
+         images = Input()
+                 
+  from tensorflow.keras.applications import ResNet50V2
+  
+  base_model = VGG16(input_tensor = images,
+                     include_top = False,
+                     weights = 'imagenet')
+  
+  base_model.trainable = False
+  
+  x = layers.Flatten()(base_model.output)
+
+  if len(config.dense_layer) != len(config.drop_rate):
+      raise AssertionError('Inadequate model settings')
+  
+  else:
+      
+     for ii in range(len(config.dense_layer)):
+
+         x = layers.Dense(config.dense_layer[ii], kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='relu')(x)
+
+         if config.drop_rate[ii] > 0 and config.drop_rate[ii] < 1:
+
+            x = layers.Dropout(config.drop_rate[ii])(x)
+
+  output = layers.Dense(config.nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+
+  model = Model(base_model.input, output, name='ResNet50V2')
+  
+  return model
+
+
 def get_init(type='he_normal'):
                
   if type == 'he_normal':
