@@ -9,7 +9,14 @@ experiment_name = 'prova1'
 # Model settings
 model_handle = model_zoo.VGG16_model
 #model_handle = model_zoo.InceptionV3_model
+#model_handle = model_zoo.ResNet50
+#model_handle = model_zoo.InceptionResNetV2
+#model_handle = model_zoo.EfficientNetB0
+#model_handle = model_zoo.EfficientNetB7
+#model_handle = model_zoo.ResNet50V2
 
+
+# fully-connected layer at the top of the network (valid for VGG16, Inception, ResNet and EfficientNet)
 dense_layer = (512, 512)  #Number of filters for each dense layer: example (512,512)--> two dense layer of 512 filters
 drop_rate = (0.5, 0.5)  # Dropout: example (0.5, 0)--> 1° dense layer drop_rate 0.5, 2° dense layer no dropout
 kernel_init = 'he_normal'    # he_normal, he_uniform, xavier_uniform, xavier_normal
