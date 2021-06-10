@@ -6,6 +6,14 @@ from tensorflow.keras import layers
 from tensorflow.keras import Model 
 from tensorflow.keras.layers import *
 
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras.applications import InceptionV3
+from tensorflow.keras.applications import ResNet50
+from tensorflow.keras.applications import InceptionResNetV2
+from tensorflow.keras.applications import EfficientNetB0
+from tensorflow.keras.applications import EfficientNetB7
+from tensorflow.keras.applications import ResNet50V2
+
 
 def VGG16_model(input_tensor, config):
   
@@ -25,8 +33,6 @@ def VGG16_model(input_tensor, config):
          raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
       else:
          images = Input()
-                 
-  from tensorflow.keras.applications import VGG16
   
   base_model = VGG16(input_tensor = images,
                      include_top = False,
@@ -74,8 +80,6 @@ def InceptionV3_model(input_tensor, config):
          raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
       else:
          images = Input()
-                 
-  from tensorflow.keras.applications import InceptionV3
   
   base_model = VGG16(input_tensor = images,
                      include_top = False,
@@ -123,8 +127,6 @@ def ResNet50_model(input_tensor, config):
          raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
       else:
          images = Input()
-                 
-  from tensorflow.keras.applications import ResNet50
   
   base_model = VGG16(input_tensor = images,
                      include_top = False,
@@ -172,8 +174,6 @@ def InceptionResNetV2_model(input_tensor, config):
          raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
       else:
          images = Input()
-                 
-  from tensorflow.keras.applications import InceptionResNetV2
   
   base_model = VGG16(input_tensor = images,
                      include_top = False,
@@ -221,8 +221,6 @@ def EfficientNetB0_model(input_tensor, config):
          raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
       else:
          images = Input()
-                 
-  from tensorflow.keras.applications import EfficientNetB0
   
   base_model = VGG16(input_tensor = images,
                      include_top = False,
@@ -270,8 +268,6 @@ def EfficientNetB7_model(input_tensor, config):
          raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
       else:
          images = Input()
-                 
-  from tensorflow.keras.applications import EfficientNetB7
   
   base_model = VGG16(input_tensor = images,
                      include_top = False,
@@ -319,8 +315,6 @@ def ResNet50V2_model(input_tensor, config):
          raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
       else:
          images = Input()
-                 
-  from tensorflow.keras.applications import ResNet50V2
   
   base_model = VGG16(input_tensor = images,
                      include_top = False,
@@ -354,11 +348,11 @@ def get_init(type='he_normal'):
                
   if type == 'he_normal':
       initial = tf.keras.initializers.HeNormal()
-  if type == 'he_uniform':
+  elif type == 'he_uniform':
       initial = tf.keras.initializers.HeUniform()
-  if type == 'xavier_normal':
+  elif type == 'xavier_normal':
       initial = tf.keras.initializers.GlorotNormal()
-  if type == 'xavier_uniform':
+  elif type == 'xavier_uniform':
       initial = tf.keras.initializers.GlorotUniform()
   else:
       raise ValueError('Unknown initialisation requested: %s' % type)
@@ -370,11 +364,11 @@ def get_reg(type='None'):
    
   if type == 'L1':
       regularize = tf.keras.regularizers.L1()
-  if type == 'L2':
+  elif type == 'L2':
       regularize = tf.keras.regularizers.L2()
-  if type == 'L1L2':
+  elif type == 'L1L2':
       regularize = tf.keras.regularizers.L1L2()
-  if type == 'None':
+  elif type == 'None':
       regularize = None
   else:
       raise ValueError('Unknown regularization requested: %s' % type)
