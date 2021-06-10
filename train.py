@@ -50,11 +50,6 @@ def get_latest_model_checkpoint_path(folder, name):
     return os.path.join(folder, name + '-' + str(latest_iteration))
 
 
-def augmentation_function(images, labels):
-    
-    
-    
-
 def run_training(continue_run):
         
         logging.info('EXPERIMENT NAME: %s' % config.experiment_name)
@@ -86,12 +81,12 @@ def run_training(continue_run):
         # the following are HDF5 datasets, not numpy arrays
         imgs_train = data['data_train'][()]
         patient_train = data['patient_train'][()]
-        class_train = data['classe_train'][()]
+        label_train = data['classe_train'][()]
 
         if 'data_test' in data:
             imgs_val = data['data_test'][()]
             patient_val = data['patient_test'][()]
-            class_val = data['classe_test'][()]
+            label_val = data['classe_test'][()]
         
         logging.info('Data summary:')
         logging.info(' - Training Images:')
@@ -101,37 +96,78 @@ def run_training(continue_run):
         logging.info(imgs_val.shape)
         logging.info(imgs_val.dtype)
         
-        if config.data_mode == '2D': 
-            nchannels = 1
-            
-        elif config.data_modo == '3D':
-            nchannels = imgs_train.shape[-1]
+        '''
         
         imgs_train = imgs_train[...,np.newaxis]
         if 'data_test' in data:
             imgs_val = imgs_val[...,np.newaxis]
-        
-        train_loader = tf.data.Dataset.from_tensor_slices((imgs_train, class_train))
-        validation_loader = tf.data.Dataset.from_tensor_slices((imgs_val, class_val))
-        
-        '''
-        
-        train_dataset = (
-            train_loader.shuffle(len(imgs_train))
-            .map(augmentation_function)
-            .batch(config.batch_size)
-            .prefetch(2)
-        )
+            
         '''
         
         # Build a model
-        model = model_zoo.get_model(imgs_train, config)
+        model, experiment_name = model_zoo.get_model(imgs_train, config)
         model.summary()
         
+        if model.name == 'VGG16': ....
         
+        for epoch in range(config.max_epochs):
+            
+            logging.info('EPOCH %d' % epoch)
+            
+            for batch in iterate_minibatches(imgs_train, 
+                                             label_train,
+                                             batch_size=config.batch_size,
+                                             augment_batch=config.augment_batch,
+                                             experiment_name):
+                
+                x, y = batch
+                
+
+def augmentation_function(images):
+    '''
+    Function for augmentation of minibatches. It will transform a set of images by 
+    a number of optional transformations. Each image in the minibatch will be 
+    seperately transformed with random parameters. 
+    :param images: A numpy array of shape [minibatch, X, Y, (Z), nchannels]
+    :return: A mini batch of the same size but with transformed images. 
+    '''
+    
+    if images.ndim = 3
+    
+                
+def iterate_minibatches(images, labels, batch_size, augment_batch=False, experiment_name):
+    '''
+    Function to create mini batches from the dataset of a certain batch size 
+    :param images: tensor
+    :param labels: tensor
+    :param batch_size: batch size
+    :param augment_batch: should batch be augmented?
+    :return: mini batches
+    '''
+
+    random_indices = np.arange(images.shape[0])
+    np.random.shuffle(random_indices)
+
+    n_images = images.shape[0]
+
+    for b_i in range(0,n_images,batch_size):
+
+        if b_i + batch_size > n_images:
+            continue
+            
+        batch_indices = np.sort(random_indices[b_i:b_i+batch_size])
+
+        X = images[batch_indices, ...]
+        y = labels[batch_indices]
+
+        #X = tf.expand_dims(X, -1)
+
+        if augment_batch:
+            X = augmentation_function(X)
+
+        yield X, y
 
         
-
 def main():
 
     continue_run = True
