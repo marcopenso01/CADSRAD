@@ -20,19 +20,19 @@ def VGG16_model(input_tensor, config):
   mode = config.data_mode
   
   if mode == '2D':
-      
-      if input_tensor.shape[-1] != 1:
-         raise AssertionError('Inadequate input tensor shape. The input must have 1 channels')
+      if input_tensor.ndim > 3:
+         raise AssertionError('Error tensor shape: expected input to have shape (N,x,y)')
       else:
          input_tensor_shape = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], 1))
          images = Concatenate(axis=-1)([input_tensor_shape, input_tensor_shape, input_tensor_shape])
   
-  if mode == '3D':
-      
-      if input_tensor.shape[-1] != 3:
-         raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
+  if mode == '3D':    
+      if input_tensor.ndim > 4:
+         raise AssertionError('Error tensor shape: expected input to have shape (N,x,y,z)')
+      elif input_tensor.shape[-1] != 3:
+         raise AssertionError('Inadequate tensor shape. Input must have 3 channels (N,x,y,3)')
       else:
-         images = Input()
+         images = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], input_tensor.shape[3]))
   
   base_model = VGG16(input_tensor = images,
                      include_top = False,
@@ -67,23 +67,23 @@ def InceptionV3_model(input_tensor, config):
   mode = config.data_mode
   
   if mode == '2D':
-      
-      if input_tensor.shape[-1] != 1:
-         raise AssertionError('Inadequate input tensor shape. The input must have 1 channels')
+      if input_tensor.ndim > 3:
+         raise AssertionError('Error tensor shape: expected input to have shape (N,x,y)')
       else:
          input_tensor_shape = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], 1))
          images = Concatenate(axis=-1)([input_tensor_shape, input_tensor_shape, input_tensor_shape])
   
-  if mode == '3D':
-      
-      if input_tensor.shape[-1] != 3:
-         raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
+  if mode == '3D':    
+      if input_tensor.ndim > 4:
+         raise AssertionError('Error tensor shape: expected input to have shape (N,x,y,z)')
+      elif input_tensor.shape[-1] != 3:
+         raise AssertionError('Inadequate tensor shape. Input must have 3 channels (N,x,y,3)')
       else:
-         images = Input()
+         images = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], input_tensor.shape[3]))
   
-  base_model = VGG16(input_tensor = images,
-                     include_top = False,
-                     weights = 'imagenet')
+  base_model = InceptionV3(input_tensor = images,
+                           include_top = False,
+                           weights = 'imagenet')
   
   base_model.trainable = False
   
@@ -114,23 +114,23 @@ def ResNet50_model(input_tensor, config):
   mode = config.data_mode
   
   if mode == '2D':
-      
-      if input_tensor.shape[-1] != 1:
-         raise AssertionError('Inadequate input tensor shape. The input must have 1 channels')
+      if input_tensor.ndim > 3:
+         raise AssertionError('Error tensor shape: expected input to have shape (N,x,y)')
       else:
          input_tensor_shape = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], 1))
          images = Concatenate(axis=-1)([input_tensor_shape, input_tensor_shape, input_tensor_shape])
   
-  if mode == '3D':
-      
-      if input_tensor.shape[-1] != 3:
-         raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
+  if mode == '3D':    
+      if input_tensor.ndim > 4:
+         raise AssertionError('Error tensor shape: expected input to have shape (N,x,y,z)')
+      elif input_tensor.shape[-1] != 3:
+         raise AssertionError('Inadequate tensor shape. Input must have 3 channels (N,x,y,3)')
       else:
-         images = Input()
+         images = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], input_tensor.shape[3]))
   
-  base_model = VGG16(input_tensor = images,
-                     include_top = False,
-                     weights = 'imagenet')
+  base_model = ResNet50(input_tensor = images,
+                        include_top = False,
+                        weights = 'imagenet')
   
   base_model.trainable = False
   
@@ -161,23 +161,23 @@ def InceptionResNetV2_model(input_tensor, config):
   mode = config.data_mode
   
   if mode == '2D':
-      
-      if input_tensor.shape[-1] != 1:
-         raise AssertionError('Inadequate input tensor shape. The input must have 1 channels')
+      if input_tensor.ndim > 3:
+         raise AssertionError('Error tensor shape: expected input to have shape (N,x,y)')
       else:
          input_tensor_shape = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], 1))
          images = Concatenate(axis=-1)([input_tensor_shape, input_tensor_shape, input_tensor_shape])
   
-  if mode == '3D':
-      
-      if input_tensor.shape[-1] != 3:
-         raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
+  if mode == '3D':    
+      if input_tensor.ndim > 4:
+         raise AssertionError('Error tensor shape: expected input to have shape (N,x,y,z)')
+      elif input_tensor.shape[-1] != 3:
+         raise AssertionError('Inadequate tensor shape. Input must have 3 channels (N,x,y,3)')
       else:
-         images = Input()
+         images = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], input_tensor.shape[3]))
   
-  base_model = VGG16(input_tensor = images,
-                     include_top = False,
-                     weights = 'imagenet')
+  base_model = InceptionResNetV2(input_tensor = images,
+                                 include_top = False,
+                                 weights = 'imagenet')
   
   base_model.trainable = False
   
@@ -208,23 +208,23 @@ def EfficientNetB0_model(input_tensor, config):
   mode = config.data_mode
   
   if mode == '2D':
-      
-      if input_tensor.shape[-1] != 1:
-         raise AssertionError('Inadequate input tensor shape. The input must have 1 channels')
+      if input_tensor.ndim > 3:
+         raise AssertionError('Error tensor shape: expected input to have shape (N,x,y)')
       else:
          input_tensor_shape = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], 1))
          images = Concatenate(axis=-1)([input_tensor_shape, input_tensor_shape, input_tensor_shape])
   
-  if mode == '3D':
-      
-      if input_tensor.shape[-1] != 3:
-         raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
+  if mode == '3D':    
+      if input_tensor.ndim > 4:
+         raise AssertionError('Error tensor shape: expected input to have shape (N,x,y,z)')
+      elif input_tensor.shape[-1] != 3:
+         raise AssertionError('Inadequate tensor shape. Input must have 3 channels (N,x,y,3)')
       else:
-         images = Input()
-  
-  base_model = VGG16(input_tensor = images,
-                     include_top = False,
-                     weights = 'imagenet')
+         images = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], input_tensor.shape[3]))
+    
+  base_model = EfficientNetB0(input_tensor = images,
+                              include_top = False,
+                              weights = 'imagenet')
   
   base_model.trainable = False
   
@@ -255,23 +255,23 @@ def EfficientNetB7_model(input_tensor, config):
   mode = config.data_mode
   
   if mode == '2D':
-      
-      if input_tensor.shape[-1] != 1:
-         raise AssertionError('Inadequate input tensor shape. The input must have 1 channels')
+      if input_tensor.ndim > 3:
+         raise AssertionError('Error tensor shape: expected input to have shape (N,x,y)')
       else:
          input_tensor_shape = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], 1))
          images = Concatenate(axis=-1)([input_tensor_shape, input_tensor_shape, input_tensor_shape])
   
-  if mode == '3D':
-      
-      if input_tensor.shape[-1] != 3:
-         raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
+  if mode == '3D':    
+      if input_tensor.ndim > 4:
+         raise AssertionError('Error tensor shape: expected input to have shape (N,x,y,z)')
+      elif input_tensor.shape[-1] != 3:
+         raise AssertionError('Inadequate tensor shape. Input must have 3 channels (N,x,y,3)')
       else:
-         images = Input()
+         images = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], input_tensor.shape[3]))
   
-  base_model = VGG16(input_tensor = images,
-                     include_top = False,
-                     weights = 'imagenet')
+  base_model = EfficientNetB7(input_tensor = images,
+                              include_top = False,
+                              weights = 'imagenet')
   
   base_model.trainable = False
   
@@ -302,23 +302,23 @@ def ResNet50V2_model(input_tensor, config):
   mode = config.data_mode
   
   if mode == '2D':
-      
-      if input_tensor.shape[-1] != 1:
-         raise AssertionError('Inadequate input tensor shape. The input must have 1 channels')
+      if input_tensor.ndim > 3:
+         raise AssertionError('Error tensor shape: expected input to have shape (N,x,y)')
       else:
          input_tensor_shape = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], 1))
          images = Concatenate(axis=-1)([input_tensor_shape, input_tensor_shape, input_tensor_shape])
   
-  if mode == '3D':
-      
-      if input_tensor.shape[-1] != 3:
-         raise AssertionError('Inadequate input tensor shape. The input must have 3 channels')
+  if mode == '3D':    
+      if input_tensor.ndim > 4:
+         raise AssertionError('Error tensor shape: expected input to have shape (N,x,y,z)')
+      elif input_tensor.shape[-1] != 3:
+         raise AssertionError('Inadequate tensor shape. Input must have 3 channels (N,x,y,3)')
       else:
-         images = Input()
+         images = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], input_tensor.shape[3]))
   
-  base_model = VGG16(input_tensor = images,
-                     include_top = False,
-                     weights = 'imagenet')
+  base_model = ResNet50V2(input_tensor = images,
+                          include_top = False,
+                          weights = 'imagenet')
   
   base_model.trainable = False
   
