@@ -108,7 +108,10 @@ def run_training(continue_run):
         model, experiment_name = model_zoo.get_model(imgs_train, config)
         model.summary()
         
-        if model.name == 'VGG16': ....
+        if model.name in 'VGG16, InceptionV3, ResNet50, InceptionResNetV2, EfficientNetB0, EfficientNetB7, ResNet50V2' and config.data_mode == '3D':
+            expand_dims = False   # (N,x,y,3)
+        else:
+            expand_dims = True
         
         for epoch in range(config.max_epochs):
             
@@ -117,31 +120,54 @@ def run_training(continue_run):
             for batch in iterate_minibatches(imgs_train, 
                                              label_train,
                                              batch_size=config.batch_size,
+                                             mode=config.data_mode,
                                              augment_batch=config.augment_batch,
-                                             experiment_name):
+                                             expand_dims):
                 
                 x, y = batch
                 
 
-def augmentation_function(images):
+def rotate_image(img, angle, rows, cols):
+    
+    rotation_matrix = cv2.getRotationMatrix2D((cols / 2, rows / 2), angle, 1)
+    return cv2.warpAffine(img, rotation_matrix, (cols, rows), flags=cv2.)
+                
+                
+def augmentation_function(images, mode):
     '''
     Function for augmentation of minibatches. It will transform a set of images by 
     a number of optional transformations. Each image in the minibatch will be 
     seperately transformed with random parameters. 
     :param images: A numpy array of shape [minibatch, X, Y, (Z), nchannels]
+    :param mode: Data mode (2D, 3D)
     :return: A mini batch of the same size but with transformed images. 
     '''
     
-    if images.ndim = 3
+    new_images = []
+    num_samples = images.shape[0]
+    rows, cols = images.shape[1:3]
+    
+    for ii in range(num_samples):
+        
+        img = np.squeeze(images[ii,...])
+        
+         # RANDOM ROTATION
+         if config.do_rotation_range:
+            coin_flip = np.random.uniform(low=0.0, high=1.0)
+            if coin_flip > 0.5:
+                random_angle = np.random.uniform(config.angles[0], config.angles[1])
+                img = rotate_image(img, random_angle, rows, cols)
     
                 
-def iterate_minibatches(images, labels, batch_size, augment_batch=False, experiment_name):
+def iterate_minibatches(images, labels, batch_size, mode, augment_batch=False, expand_dims=True):
     '''
     Function to create mini batches from the dataset of a certain batch size 
     :param images: tensor
     :param labels: tensor
     :param batch_size: batch size
+    :param mode: data mode (2D, 3D)
     :param augment_batch: should batch be augmented?
+    :param expand_dims: adding a dimension to a tensor?
     :return: mini batches
     '''
 
@@ -159,11 +185,12 @@ def iterate_minibatches(images, labels, batch_size, augment_batch=False, experim
 
         X = images[batch_indices, ...]
         y = labels[batch_indices]
-
-        #X = tf.expand_dims(X, -1)
+        
+        if expand_dims:        
+            X = tf.expand_dims(X, -1)   #array of shape [minibatch, X, Y, (Z), nchannels=1]
 
         if augment_batch:
-            X = augmentation_function(X)
+            X = augmentation_function(X, mode)    
 
         yield X, y
 
