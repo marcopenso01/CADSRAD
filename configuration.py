@@ -45,12 +45,11 @@ max_epochs = 1000
 
 # Augmentation settings
 augment_batch = True    # should batch be augmented?
-do_rotation_range = True    #random rotation in range "angles" (min,max)
-angles = (-15, 15)
-do_fliplr = False           #Flip array in the left/right direction
-do_flipud = False           #Flip array in the up/down direction.
-do_width_shift_range =
-height_shift_range = 
+do_rotation_range = (-15, 15)    #random rotation in range (min,max), otherwise False
+do_fliplr = False           #True: flip array in the left/right direction, otherwise False
+do_flipud = False           #True: flip array in the up/down direction, otherwise False
+do_width_shift_range = False   #fraction of total width, if < 1, or pixels if >= 1, otherwise False
+do_height_shift_range = False  #fraction of total width, if < 1, or pixels if >= 1, otherwise False
 
 # Pre-process settings
 standardize = False
