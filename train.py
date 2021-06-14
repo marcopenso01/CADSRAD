@@ -6,6 +6,7 @@ import numpy as np
 import logging
 import cv2
 import shutil
+from scipy import ndimage
 import pandas as pd # for some simple data analysis (right now, just to load in the labels data and quickly reference it)
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator 
@@ -126,7 +127,14 @@ def run_training(continue_run):
                 
                 x, y = batch
                
-            
+
+def flip_axis(x, axis):
+    x = np.asarray(x).swapaxes(axis, 0)
+    x = x[::-1, ...]
+    x = x.swapaxes(0, axis)
+    return x
+
+
 def transform_matrix_offset_center(matrix, x, y):
     o_x = float(x) / 2 - 0.5
     o_y = float(y) / 2 - 0.5
@@ -172,11 +180,21 @@ def apply_affine_transform(img, rows, cols, theta=0, tx=0, ty=0,
     if transform_matrix is not None:
         transform_matrix = transform_matrix_offset_center(
             transform_matrix, rows, cols)
-        img = np.rollaxis(img, 2, 0)
+        img = np.squeeze(img[...])  #(x,y)
+        #img = np.rollaxis(img, 2, 0)
         
         final_affine_matrix = transform_matrix[:2, :2]
         final_offset = transform_matrix[:2, 2]
-        
+        channel_images = ndimage.interpolation.affine_transform(
+            img,
+            final_affine_matrix,
+            final_offset,
+            order=order,
+            mode=fill_mode)
+        img = channel_images[..., np.newaxis]   #(x,y,1)
+        #img = np.stack(channel_images, axis=0)
+        #img = np.rollaxis(img, 0, 2)
+    return img
         
                 
 def augmentation_function(images, mode):
@@ -200,49 +218,41 @@ def augmentation_function(images, mode):
         
         # RANDOM ROTATION
         if config.do_rotation_range is not False:
-           coin_flip = np.random.uniform(low=0.0, high=1.0)
-           if coin_flip > 0.5:
-               theta = np.random.uniform(config.angles[0], config.angles[1])
-           else:
-               theta = 0
+            theta = np.random.uniform(config.do_rotation_range[0], config.do_rotation_range[1])
         else:
-           theta = 0
+            theta = 0
         
         #RANDOM WIDTH SHIFT
         width_rg = config.do_width_shift_range
         if width_rg is not False:
-            coin_flip = np.random.uniform(low=0.0, high=1.0)
-            if coin_flip > 0.5:
-                if width_rg >= 1:
-                    ty = np.random.choice(int(width_rg))
-                    ty *= np.random.choice([-1, 1])
-                elif width_rg >= 0 and width_rg < 1:
-                    ty = np.random.uniform(-width_rg,
-                                           width_rg)
-                    ty = int(ty * cols)
-                else:
-                    raise ValueError("do_width_shift_range parameter should be >0")
+            #coin_flip = np.random.uniform(low=0.0, high=1.0)
+            #if coin_flip > 0.5:
+            if width_rg >= 1:
+                ty = np.random.choice(int(width_rg))
+                ty *= np.random.choice([-1, 1])
+            elif width_rg >= 0 and width_rg < 1:
+                ty = np.random.uniform(-width_rg,
+                                       width_rg)
+                ty = int(ty * cols)
             else:
-                ty = 0
+                raise ValueError("do_width_shift_range parameter should be >0")
         else:
             ty = 0
             
         #RANDOM HEIGHT SHIFT
         height_rg = config.do_height_shift_range
         if height_rg is not False:
-            coin_flip = np.random.uniform(low=0.0, high=1.0)
-            if coin_flip > 0.5:
-                if height_rg >= 1:
-                    tx = np.random.choice(int(height_rg))
-                    tx *= np.random.choice([-1, 1])
-                elif height_rg >= 0 and height_rg < 1:
-                    tx = np.random.uniform(-height_rg,
-                                           height_rg)
-                    tx = int(tx * rows)
-                else:
-                    raise ValueError("do_height_shift_range parameter should be >0")
+            #coin_flip = np.random.uniform(low=0.0, high=1.0)
+            #if coin_flip > 0.5:
+            if height_rg >= 1:
+                tx = np.random.choice(int(height_rg))
+                tx *= np.random.choice([-1, 1])
+            elif height_rg >= 0 and height_rg < 1:
+                tx = np.random.uniform(-height_rg,
+                                       height_rg)
+                tx = int(tx * rows)
             else:
-                tx = 0
+                raise ValueError("do_height_shift_range parameter should be >0")
         else:
             tx = 0
             
@@ -264,8 +274,19 @@ def augmentation_function(images, mode):
                                      transform_parameters.get('ty', 0),
                                      fill_mode='nearest',
                                      order=1)
+        
+        if transform_parameters.get('flip_horizontal'):
+            img = flip_axis(img, 1)
+
+        if transform_parameters.get('flip_vertical'):
+            img = flip_axis(img, 0)
     
-                
+        new_images.append(img)
+    
+    sampled_image_batch = np.asarray(new_images)
+    return sampled_image_batch
+    
+    
 def iterate_minibatches(images, labels, batch_size, mode, augment_batch=False, expand_dims=True):
     '''
     Function to create mini batches from the dataset of a certain batch size 
