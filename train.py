@@ -137,7 +137,7 @@ def transform_matrix_offset_center(matrix, x, y):
     
     
 def apply_affine_transform(img, rows, cols, theta=0, tx=0, ty=0, 
-                           fill_mode='nearest', order=1):
+                           fill_mode='constant', order=1):
     '''
     Applies an affine transformation specified by the parameters given.
     :param img: A numpy array of shape [x, y, nchannels]
@@ -182,7 +182,8 @@ def apply_affine_transform(img, rows, cols, theta=0, tx=0, ty=0,
             final_affine_matrix,
             final_offset,
             order=order,
-            mode=fill_mode) for channel in range(img.shape[-1])]
+            mode=fill_mode,
+            cval=0.0) for channel in range(img.shape[-1])]
         img = np.stack(channel_images, axis=2)
  
     return img
@@ -258,12 +259,17 @@ def augmentation_function(images, mode):
                                 'ty': ty,
                                 'flip_horizontal': flip_horizontal,
                                 'flip_vertical': flip_vertical}
-          
+        
+        flag=0
+        if img.ndim > 3:    #(x,y,z,1)
+            img = np.squeeze(img[...])
+            flag=1
+        
         img = apply_affine_transform(img, rows=rows, cols=cols,
                                      transform_parameters.get('theta', 0),
                                      transform_parameters.get('tx', 0),
                                      transform_parameters.get('ty', 0),
-                                     fill_mode='nearest',
+                                     fill_mode='constant',
                                      order=1)
         
         if transform_parameters.get('flip_horizontal'):
@@ -271,7 +277,10 @@ def augmentation_function(images, mode):
 
         if transform_parameters.get('flip_vertical'):
             img = flip_axis(img, 0)
-    
+        
+        if flag:
+          img = img[...,np.newaxis]
+        
         new_images.append(img)
     
     sampled_image_batch = np.asarray(new_images)
