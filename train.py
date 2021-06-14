@@ -97,14 +97,6 @@ def run_training(continue_run):
         logging.info(imgs_val.shape)
         logging.info(imgs_val.dtype)
         
-        '''
-        
-        imgs_train = imgs_train[...,np.newaxis]
-        if 'data_test' in data:
-            imgs_val = imgs_val[...,np.newaxis]
-            
-        '''
-        
         # Build a model
         model, experiment_name = model_zoo.get_model(imgs_train, config)
         model.summary()
@@ -179,21 +171,20 @@ def apply_affine_transform(img, rows, cols, theta=0, tx=0, ty=0,
     
     if transform_matrix is not None:
         transform_matrix = transform_matrix_offset_center(
-            transform_matrix, rows, cols)
-        img = np.squeeze(img[...])  #(x,y)
-        #img = np.rollaxis(img, 2, 0)
-        
+            transform_matrix, rows, cols)        
         final_affine_matrix = transform_matrix[:2, :2]
         final_offset = transform_matrix[:2, 2]
-        channel_images = ndimage.interpolation.affine_transform(
-            img,
+        
+        #img = np.squeeze(img[...])  #(x,y)
+        #img = np.rollaxis(img, 2, 0)
+        channel_images = [ndimage.interpolation.affine_transform(
+            img[:,:,channel],
             final_affine_matrix,
             final_offset,
             order=order,
-            mode=fill_mode)
-        img = channel_images[..., np.newaxis]   #(x,y,1)
-        #img = np.stack(channel_images, axis=0)
-        #img = np.rollaxis(img, 0, 2)
+            mode=fill_mode) for channel in range(img.shape[-1])]
+        img = np.stack(channel_images, axis=2)
+ 
     return img
         
                 
@@ -267,7 +258,7 @@ def augmentation_function(images, mode):
                                 'ty': ty,
                                 'flip_horizontal': flip_horizontal,
                                 'flip_vertical': flip_vertical}
-        
+          
         img = apply_affine_transform(img, rows=rows, cols=cols,
                                      transform_parameters.get('theta', 0),
                                      transform_parameters.get('tx', 0),
@@ -284,6 +275,7 @@ def augmentation_function(images, mode):
         new_images.append(img)
     
     sampled_image_batch = np.asarray(new_images)
+    
     return sampled_image_batch
     
     
