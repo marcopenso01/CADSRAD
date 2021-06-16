@@ -15,7 +15,7 @@ from tensorflow.keras.applications import EfficientNetB7
 from tensorflow.keras.applications import ResNet50V2
 
 
-def VGG16_model(input_tensor, config):
+def VGG16_model(input_tensor, nlabels, config):
   
   mode = config.data_mode
   
@@ -55,14 +55,14 @@ def VGG16_model(input_tensor, config):
 
             x = layers.Dropout(config.drop_rate[ii])(x)
 
-  output = layers.Dense(config.nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+  output = layers.Dense(nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
 
   model = Model(base_model.input, output, name='VGG16')
   
   return model
   
 
-def InceptionV3_model(input_tensor, config):
+def InceptionV3_model(input_tensor, nlabels, config):
   
   mode = config.data_mode
   
@@ -102,14 +102,14 @@ def InceptionV3_model(input_tensor, config):
 
             x = layers.Dropout(config.drop_rate[ii])(x)
 
-  output = layers.Dense(config.nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+  output = layers.Dense(nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
 
   model = Model(base_model.input, output, name='InceptionV3')
   
   return model
                 
 
-def ResNet50_model(input_tensor, config):
+def ResNet50_model(input_tensor, nlabels, config):
   
   mode = config.data_mode
   
@@ -149,14 +149,14 @@ def ResNet50_model(input_tensor, config):
 
             x = layers.Dropout(config.drop_rate[ii])(x)
 
-  output = layers.Dense(config.nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+  output = layers.Dense(nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
 
   model = Model(base_model.input, output, name='ResNet50')
   
   return model
 
 
-def InceptionResNetV2_model(input_tensor, config):
+def InceptionResNetV2_model(input_tensor, nlabels, config):
   
   mode = config.data_mode
   
@@ -196,14 +196,14 @@ def InceptionResNetV2_model(input_tensor, config):
 
             x = layers.Dropout(config.drop_rate[ii])(x)
 
-  output = layers.Dense(config.nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+  output = layers.Dense(nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
 
   model = Model(base_model.input, output, name='InceptionResNetV2')
   
   return model
 
 
-def EfficientNetB0_model(input_tensor, config):
+def EfficientNetB0_model(input_tensor, nlabels, config):
   
   mode = config.data_mode
   
@@ -243,14 +243,14 @@ def EfficientNetB0_model(input_tensor, config):
 
             x = layers.Dropout(config.drop_rate[ii])(x)
 
-  output = layers.Dense(config.nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+  output = layers.Dense(nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
 
   model = Model(base_model.input, output, name='EfficientNetB0')
   
   return model
 
 
-def EfficientNetB7_model(input_tensor, config):
+def EfficientNetB7_model(input_tensor, nlabels, config):
   
   mode = config.data_mode
   
@@ -290,14 +290,14 @@ def EfficientNetB7_model(input_tensor, config):
 
             x = layers.Dropout(config.drop_rate[ii])(x)
 
-  output = layers.Dense(config.nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+  output = layers.Dense(nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
 
   model = Model(base_model.input, output, name='EfficientNetB7')
   
   return model
 
 
-def ResNet50V2_model(input_tensor, config):
+def ResNet50V2_model(input_tensor, nlabels, config):
   
   mode = config.data_mode
   
@@ -337,7 +337,7 @@ def ResNet50V2_model(input_tensor, config):
 
             x = layers.Dropout(config.drop_rate[ii])(x)
 
-  output = layers.Dense(config.nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+  output = layers.Dense(nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
 
   model = Model(base_model.input, output, name='ResNet50V2')
   
@@ -376,6 +376,6 @@ def get_reg(type='None'):
   return regularize
 
                
-def get_model(images, config):
+def get_model(images, nlabels, config):
   
-  return config.model_handle(images, config)
+  return config.model_handle(images, nlabels, config)
