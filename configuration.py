@@ -34,13 +34,11 @@ weights_root = os.path.join(log_root, experiment_name)
 data_mode = '2D'   #2D or 3D
 image_size = (212, 212)    #(212,212) or (116,116,28)  --> (nx,ny,Nz_max) with Nz_max = 0 padding is not applied. This might result in volumes with different Nz
 target_resolution = (1, 1)   #(1.36719, 1.36719) or (2.5,2.5,5)
-nlabels = 2
 
 # Training settings
 split_val_train = 0.2 # between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
 batch_size = 8
 learning_rate = 0.001
-optimizer_handle = tf.train.AdamOptimizer
 max_epochs = 1000
 
 # Augmentation settings
