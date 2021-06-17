@@ -98,7 +98,8 @@ def run_training(continue_run):
         logging.info(imgs_val.dtype)
         
         # Class Mapping 
-        logging.info('CAD - 0:Normal | 1:1-24% | 2:25-49% | 3:50-69% | 4:70-99% | 3:100%')
+        logging.info('CAD - 0:Normal | 1:1-24% | 2:25-49% | 3:50-69% | 4:70-99% | 5:100%')
+        logging.info(dict(zip(unique, counts)))
         
         unique, counts = np.unique(label_train, return_counts=True)
         nlabels = len(unique)
