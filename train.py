@@ -97,8 +97,14 @@ def run_training(continue_run):
         logging.info(imgs_val.shape)
         logging.info(imgs_val.dtype)
         
+        # Class Mapping 
+        logging.info('CAD - 0:Normal | 1:1-24% | 2:25-49% | 3:50-69% | 4:70-99% | 3:100%')
+        
+        unique, counts = np.unique(label_train, return_counts=True)
+        nlabels = len(unique)
+        
         # Build a model
-        model, experiment_name = model_zoo.get_model(imgs_train, config)
+        model, experiment_name = model_zoo.get_model(imgs_train, nlabels, config)
         model.summary()
         
         if model.name in 'VGG16, InceptionV3, ResNet50, InceptionResNetV2, EfficientNetB0, EfficientNetB7, ResNet50V2' and config.data_mode == '3D':
