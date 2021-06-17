@@ -79,12 +79,16 @@ def run_training(continue_run):
                 force_overwrite=False
             )
         
+        train_on_all_data = True
+        
         # the following are HDF5 datasets, not numpy arrays
         imgs_train = data['data_train'][()]
         patient_train = data['patient_train'][()]
         label_train = data['classe_train'][()]
 
         if 'data_test' in data:
+            
+            train_on_all_data = False
             imgs_val = data['data_test'][()]
             patient_val = data['patient_test'][()]
             label_val = data['classe_test'][()]
@@ -127,12 +131,17 @@ def run_training(continue_run):
                      tf.keras.metrics.Recall(),
                      tf.keras.metrics.Precision()]
         optimizer = tf.keras.optimizers.Adam(learning_rate=config.learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-07)
+        
         logging.info('compiling model...')
         model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
+        
+        history = []
         
         for epoch in range(config.max_epochs):
             
             logging.info('EPOCH %d' % epoch)
+            
+            temp_hist = []
             
             for batch in iterate_minibatches(imgs_train, 
                                              label_train,
@@ -149,8 +158,18 @@ def run_training(continue_run):
                     step += 1
                     continue
                 
+                hist = model.train_on_batch(x,y)
+                temp_hist.append(hist)
+                
+                
                 step += 1
-               
+            
+            # evaluate the model against the validation set
+            if not train_on_all_data:
+                logging.info('Validation Data Eval:')
+                
+            
+            
 
 def flip_axis(x, axis):
     x = np.asarray(x).swapaxes(axis, 0)
