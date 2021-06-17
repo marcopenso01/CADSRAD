@@ -9,6 +9,7 @@ import shutil
 from scipy import ndimage
 import pandas as pd # for some simple data analysis (right now, just to load in the labels data and quickly reference it)
 import tensorflow as tf 
+from keras.utils.np_utils import to_categorical
 from tensorflow.keras import layers 
 from tensorflow.keras import Model 
 
@@ -113,7 +114,7 @@ def run_training(continue_run):
             expand_dims = True
         
         #METRICS
-        if nlabel > 2:
+        if nlabels > 2:
             loss = tf.keras.losses.categorical_crossentropy
             metrics=[tf.keras.metrics.CategoricalAccuracy(), 
                      tf.keras.metrics.AUC(),
@@ -135,6 +136,7 @@ def run_training(continue_run):
             
             for batch in iterate_minibatches(imgs_train, 
                                              label_train,
+                                             nlabels,
                                              batch_size=config.batch_size,
                                              mode=config.data_mode,
                                              augment_batch=config.augment_batch,
@@ -318,7 +320,7 @@ def augmentation_function(images, mode):
     return sampled_image_batch
     
     
-def iterate_minibatches(images, labels, batch_size, mode, augment_batch=False, expand_dims=True):
+def iterate_minibatches(images, labels, nlabels, batch_size, mode, augment_batch=False, expand_dims=True):
     '''
     Function to create mini batches from the dataset of a certain batch size 
     :param images: tensor
@@ -347,8 +349,9 @@ def iterate_minibatches(images, labels, batch_size, mode, augment_batch=False, e
         
         if expand_dims:        
             X = X[...,np.newaxis]   #array of shape [minibatch, X, Y, (Z), nchannels=1]
-
-        y = 
+        
+        if nlabels > 2:
+            y = to_categorical(y, nlabels)  #one-hot
         
         if augment_batch:
             X = augmentation_function(X, mode)    
