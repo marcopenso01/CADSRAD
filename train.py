@@ -113,6 +113,17 @@ def run_training(continue_run):
         else:
             expand_dims = True
         
+        #METRICS
+        if nlabel > 2:
+            loss = tf.keras.losses.categorical_crossentropy
+        else:
+            loss = tf.keras.losses.binary_crossentropy   
+        optimizer = tf.keras.optimizers.Adam(learning_rate=config.learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-07)
+        metrics=[tf.keras.metrics.CategoricalAccuracy(), tf.keras.metrics.AUC()])
+        #metrics= ['categorical_accuracy', keras_metrics.precision(), keras_metrics.recall()]
+        logging.info('compiling model...')
+        model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
+        
         for epoch in range(config.max_epochs):
             
             logging.info('EPOCH %d' % epoch)
@@ -125,6 +136,13 @@ def run_training(continue_run):
                                              expand_dims):
                 
                 x, y = batch
+                
+                #TEMPORARY HACK (to avoid incomplete batches)
+                if y.shape[0] < config.batch_size:
+                    step += 1
+                    continue
+                
+                step += 1
                
 
 def flip_axis(x, axis):
