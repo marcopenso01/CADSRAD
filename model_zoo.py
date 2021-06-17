@@ -58,7 +58,7 @@ def VGG16_model(input_tensor, nlabels, config):
   if nlabels > 2:
      output = layers.Dense(nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
   else:
-     output = layers.Dense(nlabels-1, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+     output = layers.Dense(nlabels-1, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='sigmoid')(x)
 
   model = Model(base_model.input, output, name='VGG16')
   
@@ -108,7 +108,7 @@ def InceptionV3_model(input_tensor, nlabels, config):
   if nlabels > 2:
      output = layers.Dense(nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
   else:
-     output = layers.Dense(nlabels-1, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+     output = layers.Dense(nlabels-1, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='sigmoid')(x)
 
   model = Model(base_model.input, output, name='InceptionV3')
   
@@ -158,7 +158,7 @@ def ResNet50_model(input_tensor, nlabels, config):
   if nlabels > 2:
      output = layers.Dense(nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
   else:
-     output = layers.Dense(nlabels-1, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+     output = layers.Dense(nlabels-1, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='sigmoid')(x)
 
   model = Model(base_model.input, output, name='ResNet50')
   
@@ -208,7 +208,7 @@ def InceptionResNetV2_model(input_tensor, nlabels, config):
   if nlabels > 2:
      output = layers.Dense(nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
   else:
-     output = layers.Dense(nlabels-1, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+     output = layers.Dense(nlabels-1, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='sigmoid')(x)
 
   model = Model(base_model.input, output, name='InceptionResNetV2')
   
@@ -258,7 +258,7 @@ def EfficientNetB0_model(input_tensor, nlabels, config):
   if nlabels > 2:
      output = layers.Dense(nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
   else:
-     output = layers.Dense(nlabels-1, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+     output = layers.Dense(nlabels-1, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='sigmoid')(x)
 
   model = Model(base_model.input, output, name='EfficientNetB0')
   
@@ -308,7 +308,7 @@ def EfficientNetB7_model(input_tensor, nlabels, config):
   if nlabels > 2:
      output = layers.Dense(nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
   else:
-     output = layers.Dense(nlabels-1, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+     output = layers.Dense(nlabels-1, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='sigmoid')(x)
 
   model = Model(base_model.input, output, name='EfficientNetB7')
   
@@ -358,7 +358,7 @@ def ResNet50V2_model(input_tensor, nlabels, config):
   if nlabels > 2:
      output = layers.Dense(nlabels, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
   else:
-     output = layers.Dense(nlabels-1, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='softmax')(x)
+     output = layers.Dense(nlabels-1, kernel_initializer=get_init(config.kernel_init), kernel_regularizer=get_reg(config.kernel_reg), activation='sigmoid')(x)
 
   model = Model(base_model.input, output, name='ResNet50V2')
   
