@@ -8,8 +8,7 @@ import cv2
 import shutil
 from scipy import ndimage
 import pandas as pd # for some simple data analysis (right now, just to load in the labels data and quickly reference it)
-import tensorflow as tf
-from tensorflow.keras.preprocessing.image import ImageDataGenerator 
+import tensorflow as tf 
 from tensorflow.keras import layers 
 from tensorflow.keras import Model 
 
@@ -116,11 +115,17 @@ def run_training(continue_run):
         #METRICS
         if nlabel > 2:
             loss = tf.keras.losses.categorical_crossentropy
+            metrics=[tf.keras.metrics.CategoricalAccuracy(), 
+                     tf.keras.metrics.AUC(),
+                     tf.keras.metrics.Recall(),
+                     tf.keras.metrics.Precision()]
         else:
             loss = tf.keras.losses.binary_crossentropy   
+            metrics=[tf.keras.metrics.BinaryAccuracy(), 
+                     tf.keras.metrics.AUC(),
+                     tf.keras.metrics.Recall(),
+                     tf.keras.metrics.Precision()]
         optimizer = tf.keras.optimizers.Adam(learning_rate=config.learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-07)
-        metrics=[tf.keras.metrics.CategoricalAccuracy(), tf.keras.metrics.AUC()])
-        #metrics= ['categorical_accuracy', keras_metrics.precision(), keras_metrics.recall()]
         logging.info('compiling model...')
         model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
         
@@ -343,6 +348,8 @@ def iterate_minibatches(images, labels, batch_size, mode, augment_batch=False, e
         if expand_dims:        
             X = X[...,np.newaxis]   #array of shape [minibatch, X, Y, (Z), nchannels=1]
 
+        y = 
+        
         if augment_batch:
             X = augmentation_function(X, mode)    
 
