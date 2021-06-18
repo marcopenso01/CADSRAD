@@ -135,13 +135,18 @@ def run_training(continue_run):
         logging.info('compiling model...')
         model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
         
-        history = []
+        history  = {}   #It records training metrics for each epoch
+        no_improvement_counter = 0
+        last_train = np.inf
+        step = init_step
+        
+        logging.info('Using TensorFlow backend')
         
         for epoch in range(config.max_epochs):
             
             logging.info('EPOCH %d' % epoch)
             
-            temp_hist = []
+            temp_hist = {}   #It records training metrics for each batch
             
             for batch in iterate_minibatches(imgs_train, 
                                              label_train,
@@ -159,18 +164,55 @@ def run_training(continue_run):
                     continue
                 
                 hist = model.train_on_batch(x,y)
-                temp_hist.append(hist)
                 
+                #print("Train output: " + str(hist))
                 
+                if temp_hist == {}:
+                    for m_i in range(len(model.metrics_names)):
+                        temp_hist[model.metrics_names[m_i]] = []
+                for key, i in zip(temp_hist, range(len(temp_hist))):
+                    temp_hist[key].append(hist[i])
+                
+                if (step + 1) % config.train_eval_frequency == 0:
+                    
+                    train_loss = hist[0]
+                    if train_loss <= last_train:  # best_train:
+                        no_improvement_counter = 0
+                        logging.info('Decrease in training error!')
+                    else:
+                        no_improvement_counter = no_improvement_counter+1
+                        logging.info('No improvment in training error for %d steps' % no_improvement_counter)
+
+                    last_train = train_loss
+                     
                 step += 1
             
+            for key in temp_hist:
+                temp_hist[key] = sum(temp_hist[key])/len(temp_hist[key])
+            
+            for m_k in range(len(model.metrics_names)):
+                logging.info(str(model.metrics_names[m_k]+': %f') % temp_hist[model.metrics_names[m_k]])
+            logging.info('Epoch: %d/%d' % (epoch, config.max_epochs))
+            
+            if history == {}:
+                for m_i in range(len(model.metrics_names)):
+                    history[model.metrics_names[m_i]] = []
+            for key in history:
+                history[key].append(temp_hist[key])
+    
             # evaluate the model against the validation set
             if not train_on_all_data:
                 logging.info('Validation Data Eval:')
                 
             
-            
+        for m_k in range(len(model.metrics_names)):
+            plt.plot(temp_hist[model.metrics_names[m_k]])
+            plt.title(str('model '+ model.metrics_names[m_k]))
+            plt.xlabel('epoch')
+            plt.ylabel(model.metrics_names[m_k])
+            plt.show()    
 
+            
 def flip_axis(x, axis):
     x = np.asarray(x).swapaxes(axis, 0)
     x = x[::-1, ...]
