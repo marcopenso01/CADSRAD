@@ -52,3 +52,5 @@ do_height_shift_range = False  #fraction of total width, if < 1, or pixels if >=
 # Pre-process settings
 standardize = False
 normalize = True
+
+train_eval_frequency = 10
