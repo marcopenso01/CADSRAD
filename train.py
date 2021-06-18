@@ -144,7 +144,7 @@ def run_training(continue_run):
         
         for epoch in range(config.max_epochs):
             
-            logging.info('EPOCH %d' % epoch)
+            logging.info('EPOCH %d/%d' % (epoch, onfig.max_epochs))
             
             temp_hist = {}   #It records training metrics for each batch
             
@@ -181,7 +181,7 @@ def run_training(continue_run):
                         logging.info('Decrease in training error!)
                     else:
                         no_improvement_counter = no_improvement_counter+1
-                        logging.info('No improvment in training error for %d steps' % no_improvement_counter)
+                        logging.info('No improvement in training error for %d steps' % no_improvement_counter)
 
                     last_train = train_loss
                      
@@ -206,7 +206,7 @@ def run_training(continue_run):
                 
             
         for m_k in range(len(model.metrics_names)):
-            plt.plot(temp_hist[model.metrics_names[m_k]])
+            plt.plot(history[model.metrics_names[m_k]])
             plt.title(str('model '+ model.metrics_names[m_k]))
             plt.xlabel('epoch')
             plt.ylabel(model.metrics_names[m_k])
