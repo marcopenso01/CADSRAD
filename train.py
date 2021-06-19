@@ -143,6 +143,7 @@ def run_training(continue_run):
         model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
         
         history  = {}   #It records training metrics for each epoch
+        val_history = {}    #It records validation metrics for each epoch
         lr_hist = []
         no_improvement_counter = 0
         last_train = np.inf
@@ -245,7 +246,11 @@ def run_training(continue_run):
                                    expand_dims)
                 
                 
-                                     
+                if val_history == {}:
+                    for m_i in range(len(model.metrics_names)):
+                        val_history[model.metrics_names[m_i]] = []
+                for key in val_history:
+                    val_history[key].append(val_hist[i])                
             
         #plot history (loss and metrics)
         for m_k in range(len(model.metrics_names)):
