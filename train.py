@@ -245,17 +245,18 @@ def run_training(continue_run):
                                    augment_batch=False,
                                    expand_dims)
                 
-                
                 if val_history == {}:
                     for m_i in range(len(model.metrics_names)):
                         val_history[model.metrics_names[m_i]] = []
-                for key in val_history:
-                    val_history[key].append(val_hist[i])                
+                for key, ii in zip(val_history, range(len(val_history))):
+                    val_history[key].append(val_hist[i])           
             
         #plot history (loss and metrics)
         for m_k in range(len(model.metrics_names)):
-            plt.plot(history[model.metrics_names[m_k]])
+            plt.plot(history[model.metrics_names[m_k]], label=model.metrics_names[m_k])
+            plt.plot(val_history[model.metrics_names[m_k]], label=str('val_' + model.metrics_names[m_k]))
             plt.title(str('model '+ model.metrics_names[m_k]))
+            plt.legend()
             plt.xlabel('epoch')
             plt.ylabel(model.metrics_names[m_k])
             plt.show()
