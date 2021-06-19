@@ -143,6 +143,7 @@ def run_training(continue_run):
         model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
         
         history  = {}   #It records training metrics for each epoch
+        lr_hist = []
         no_improvement_counter = 0
         last_train = np.inf
         step = init_step
@@ -207,6 +208,9 @@ def run_training(continue_run):
                     history[model.metrics_names[m_i]] = []
             for key in history:
                 history[key].append(temp_hist[key])
+            
+            #save learning rate history
+            lr_hist.append(curr_lr)
                                      
             #decay learning rate
             if config.time_decay:
@@ -235,12 +239,19 @@ def run_training(continue_run):
                 logging.info('Validation Data Eval:')
                 
             
+        #plot history (loss and metrics)
         for m_k in range(len(model.metrics_names)):
             plt.plot(history[model.metrics_names[m_k]])
             plt.title(str('model '+ model.metrics_names[m_k]))
             plt.xlabel('epoch')
             plt.ylabel(model.metrics_names[m_k])
-            plt.show()    
+            plt.show()
+        #plot learning rate
+        plt.plot(lr_hist)
+        plt.title('model learning rate')
+        plt.xlabel('epoch')
+        plt.ylabel('learning rate')
+        plt.show() 
 
                                      
 def flip_axis(x, axis):
