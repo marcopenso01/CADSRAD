@@ -38,8 +38,14 @@ target_resolution = (1, 1)   #(1.36719, 1.36719) or (2.5,2.5,5)
 # Training settings
 split_val_train = 0.2 # between 0.0 and 1.0 and represent the proportion of the dataset to include in the test split.
 batch_size = 8
-learning_rate = 0.001
+learning_rate = 0.001   # initial learning rate value
 max_epochs = 1000
+
+#Decay Learning rate
+time_decay = False     # LearningRate = LearningRate * 1/(1 + decay * epoch)
+step_decay = False     # LearningRate = InitialLearningRate * DropRate^floor(epoch / epochDrop)
+exp_decay = False      # LearningRate = InitialLearningRate * exp^(-decay * epoch)
+adaptive_decay = False # LearningRate = InitialLearningRate * cost_function
 
 # Augmentation settings
 augment_batch = True    # should batch be augmented?
@@ -53,4 +59,4 @@ do_height_shift_range = False  #fraction of total width, if < 1, or pixels if >=
 standardize = False
 normalize = True
 
-train_eval_frequency = 10
+step_train_eval_frequency = 10
