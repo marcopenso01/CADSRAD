@@ -49,9 +49,9 @@ adaptive_decay = False # LearningRate = InitialLearningRate * cost_function
 
 # Augmentation settings
 augment_batch = True    # should batch be augmented?
-do_rotation_range = (-15, 15)    #random rotation in range (min,max), otherwise False
-do_fliplr = False           #True: flip array in the left/right direction, otherwise False
-do_flipud = False           #True: flip array in the up/down direction, otherwise False
+do_rotation_range = (-15, 15)  #random rotation in range (min,max), otherwise False
+do_fliplr = False              #True: flip array in the left/right direction, otherwise False
+do_flipud = False              #True: flip array in the up/down direction, otherwise False
 do_width_shift_range = False   #fraction of total width, if < 1, or pixels if >= 1, otherwise False
 do_height_shift_range = False  #fraction of total width, if < 1, or pixels if >= 1, otherwise False
 
