@@ -6,6 +6,7 @@ import numpy as np
 import logging
 import cv2
 import shutil
+import math 
 from scipy import ndimage
 import pandas as pd # for some simple data analysis (right now, just to load in the labels data and quickly reference it)
 import tensorflow as tf 
@@ -116,6 +117,9 @@ def run_training(continue_run):
             expand_dims = False   # (N,x,y,3)
         else:
             expand_dims = True
+            
+        if (config.time_decay and (config.step_decay or config.exp_decay)) or (config.step_decay and config.exp_decay):
+            raise AssertionError('Two decay learning rate activated')
         
         #METRICS
         if nlabels > 2:
@@ -130,7 +134,9 @@ def run_training(continue_run):
                      tf.keras.metrics.AUC(),
                      tf.keras.metrics.Recall(),
                      tf.keras.metrics.Precision()]
-        optimizer = tf.keras.optimizers.Adam(learning_rate=config.learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-07)
+        
+        curr_lr = config.learning_rate
+        optimizer = tf.keras.optimizers.Adam(learning_rate=curr_lr, beta_1=0.9, beta_2=0.999, epsilon=1e-07)
         
         logging.info('compiling model...')
         model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
@@ -173,7 +179,7 @@ def run_training(continue_run):
                 for key, i in zip(temp_hist, range(len(temp_hist))):
                     temp_hist[key].append(hist[i])
                 
-                if (step + 1) % config.train_eval_frequency == 0:
+                if (step + 1) % config.step_train_eval_frequency == 0:
                     
                     train_loss = hist[0]
                     if train_loss <= last_train:  # best_train:
@@ -185,8 +191,9 @@ def run_training(continue_run):
 
                     last_train = train_loss
                      
-                step += 1
+                step += 1  #fine batch
             
+                                     
             for key in temp_hist:
                 temp_hist[key] = sum(temp_hist[key])/len(temp_hist[key])
             
@@ -199,6 +206,22 @@ def run_training(continue_run):
                     history[model.metrics_names[m_i]] = []
             for key in history:
                 history[key].append(temp_hist[key])
+                                     
+            #decay learning rate
+            if config.time_decay:
+                #decay_rate = config.learning_rate / config.max_epochs
+                decay_rate = 1E-4
+                curr_lr *= (1. / (1. + decay_rate * epoch))
+            elif config.step_decay:
+                drop = 0.5
+                epochs_drop = 40.0
+                curr_lr = config.learning_rate * math.pow(drop,
+                          math.floor((1+epoch)/epochs_drop))
+            elif config.exp_decay:
+                k = 0.01
+                curr_lr = config.learning_rate * math.exp(-k*epoch)
+            elif config.adaptive_decay:
+                curr_lr = config.learning_rate * temp_hist['loss']
     
             # evaluate the model against the validation set
             if not train_on_all_data:
@@ -212,7 +235,7 @@ def run_training(continue_run):
             plt.ylabel(model.metrics_names[m_k])
             plt.show()    
 
-            
+                                     
 def flip_axis(x, axis):
     x = np.asarray(x).swapaxes(axis, 0)
     x = x[::-1, ...]
