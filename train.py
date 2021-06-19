@@ -109,6 +109,9 @@ def run_training(continue_run):
         unique, counts = np.unique(label_train, return_counts=True)
         nlabels = len(unique)
         
+        if (config.time_decay and (config.step_decay or config.exp_decay or config.adaptive_decay)) or (config.step_decay and (config.exp_decay or config.adaptive_decay)) or (config.exp_decay and config.adaptive_decay):
+            raise AssertionError('Select a single learning rate decay')
+        
         # Build a model
         model, experiment_name = model_zoo.get_model(imgs_train, nlabels, config)
         model.summary()
@@ -117,10 +120,7 @@ def run_training(continue_run):
             expand_dims = False   # (N,x,y,3)
         else:
             expand_dims = True
-            
-        if (config.time_decay and (config.step_decay or config.exp_decay)) or (config.step_decay and config.exp_decay):
-            raise AssertionError('Two decay learning rate activated')
-        
+                    
         #METRICS
         if nlabels > 2:
             loss = tf.keras.losses.categorical_crossentropy
