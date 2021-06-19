@@ -11,6 +11,7 @@ from scipy import ndimage
 import pandas as pd # for some simple data analysis (right now, just to load in the labels data and quickly reference it)
 import tensorflow as tf 
 from keras.utils.np_utils import to_categorical
+from tensorflow.keras import backend as K
 from tensorflow.keras import layers 
 from tensorflow.keras import Model 
 
@@ -212,17 +213,23 @@ def run_training(continue_run):
                 #decay_rate = config.learning_rate / config.max_epochs
                 decay_rate = 1E-4
                 curr_lr *= (1. / (1. + decay_rate * epoch))
+                K.set_value(model.optimizer.learning_rate, curr_lr)
             elif config.step_decay:
                 drop = 0.5
                 epochs_drop = 40.0
                 curr_lr = config.learning_rate * math.pow(drop,
                           math.floor((1+epoch)/epochs_drop))
+                K.set_value(model.optimizer.learning_rate, curr_lr)
             elif config.exp_decay:
                 k = 0.01
                 curr_lr = config.learning_rate * math.exp(-k*epoch)
+                K.set_value(model.optimizer.learning_rate, curr_lr)
             elif config.adaptive_decay:
                 curr_lr = config.learning_rate * temp_hist['loss']
-    
+                K.set_value(model.optimizer.learning_rate, curr_lr)
+                                     
+            logging.info('Current learning rate: %f' % curr_lr)
+                                     
             # evaluate the model against the validation set
             if not train_on_all_data:
                 logging.info('Validation Data Eval:')
