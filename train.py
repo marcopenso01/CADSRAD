@@ -234,10 +234,18 @@ def run_training(continue_run):
                                      
             logging.info('Current learning rate: %f' % curr_lr)
                                      
-            # evaluate the model against the validation set
+            # Save a checkpoint and evaluate the model against the validation set
             if not train_on_all_data:
+                                     
                 logging.info('Validation Data Eval:')
+                val_hist = do_eval(imgs_val, label_val, nlabels,
+                                   batch_size=config.batch_size,
+                                   mode=config.data_mode,
+                                   augment_batch=False,
+                                   expand_dims)
                 
+                
+                                     
             
         #plot history (loss and metrics)
         for m_k in range(len(model.metrics_names)):
@@ -253,6 +261,49 @@ def run_training(continue_run):
         plt.ylabel('learning rate')
         plt.show() 
 
+
+
+def do_eval(images, labels, nlabels, batch_size, mode, augment_batch=False, expand_dims=True):                           
+    '''
+    Function for running the evaluations on the validation sets.  
+    :param images: A numpy array containing the images
+    :param labels: A numpy array containing the corresponding labels 
+    :param nlabels: number of labels
+    :param batch_size: batch size
+    :param mode: data mode (2D, 3D)
+    :param augment_batch: should batch be augmented?
+    :param expand_dims: adding a dimension to a tensor? 
+    :return: Scalar val loss and metrics
+    '''
+    num_batches = 0
+    history = []
+    
+    for batch in iterate_minibatches(images, 
+                                     labels,
+                                     nlabels,
+                                     batch_size,
+                                     mode,
+                                     augment_batch,
+                                     expand_dims):
+        x, y = batch
+                                     
+        if y.shape[0] < batch_size:
+            continue
+        
+        val_hist = model.test_on_batch(x,y)
+        
+        if history == []:
+            history.append(val_hist)
+        else:
+            history[0] = [x + y for x, y in zip(history[0], val_hist)]
+        num_batches += 1
+    
+    for i in range(len(history[0])):
+        history[0][i] /= num_batches
+                                     
+    return history[0]
+
+                                     
                                      
 def flip_axis(x, axis):
     x = np.asarray(x).swapaxes(axis, 0)
@@ -427,6 +478,7 @@ def iterate_minibatches(images, labels, nlabels, batch_size, mode, augment_batch
     Function to create mini batches from the dataset of a certain batch size 
     :param images: tensor
     :param labels: tensor
+    :param nlabels: number of labels
     :param batch_size: batch size
     :param mode: data mode (2D, 3D)
     :param augment_batch: should batch be augmented?
