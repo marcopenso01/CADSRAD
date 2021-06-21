@@ -84,18 +84,6 @@ def run_training(continue_run):
         model, experiment_name = model_zoo.get_model(imgs_train, nlabels, config)
         model.summary()
         
-        #restore previous session
-        if continue_run:
-        logging.info('!!!!!!!!!!!!!!!!!!!!!!!!!!!! Continuing previous run !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-        try:
-            model.load_weights(os.path.join(log_dir, 'model_best_weights.h5'))
-            logging.info('loading weights...')
-            logging.info('Latest epoch was: %d' % init_step)
-        except:
-            logging.warning('!!! Didnt find init checkpoint. Maybe first run failed. Disabling continue mode...')
-            continue_run = False
-            init_step = 0
-        
         if model.name in 'VGG16, InceptionV3, ResNet50, InceptionResNetV2, EfficientNetB0, EfficientNetB7, ResNet50V2' and config.data_mode == '3D':
             expand_dims = False   # (N,x,y,3)
         else:
@@ -121,17 +109,36 @@ def run_training(continue_run):
         logging.info('compiling model...')
         model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
         
+        #restore previous session
+        if continue_run:
+            logging.info('!!!!!!!!!!!!!!!!!!!!!!!!!!!! Continuing previous run !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            try:
+                best_model_file, last_loss, last_epoch = get_latest_model_checkpoint(log_dir)
+                model.load_weights(os.path.join(log_dir, best_model_file))
+                logging.info('loading weights...')
+                logging.info('Latest epoch was: %d' % last_epoch)
+                best_val = last_loss
+                init_epoch = last_epoch + 1  #plus 1 otherwise repeats last epoch
+            except:
+                logging.warning('!!! Didnt find init checkpoint. Maybe first run failed. Disabling continue mode...')
+                continue_run = False
+                init_step = 0
+                best_val = np.inf
+                init_epoch = 0
+        else:
+            best_val = np.inf
+            init_epoch = 0
+        
         history  = {}   #It records training metrics for each epoch
         val_history = {}    #It records validation metrics for each epoch
         lr_hist = []
         no_improvement_counter = 0
         last_train = np.inf
-        best_val = np.inf
         step = init_step
         
         logging.info('Using TensorFlow backend')
         
-        for epoch in range(config.max_epochs):
+        for epoch in range(init_epoch, config.max_epochs):
             
             logging.info('EPOCH %d/%d' % (epoch, onfig.max_epochs))
             
@@ -175,8 +182,7 @@ def run_training(continue_run):
                     last_train = train_loss
                      
                 step += 1  #fine batch
-            
-                                     
+                                
             for key in temp_hist:
                 temp_hist[key] = sum(temp_hist[key])/len(temp_hist[key])
             
@@ -260,6 +266,14 @@ def run_training(continue_run):
         plt.show() 
 
 
+def get_latest_model_checkpoint(my_dir):
+    for fname in os.listdir(my_dir):
+      if fname.startswith('model_best_loss_'):
+          file = os.path.join(my_dir, fname)
+          loss = fname.split('model_best_loss_')[1].split('_step_')[0]
+          epoch = fname.split('_step_')[1].split('.h5')[0]
+          return fname, float(loss), int(epoch)
+                                     
 def remove_file(my_dir):
     for fname in os.listdir(my_dir):
         if fname.startswith('model_best_weights_'):
