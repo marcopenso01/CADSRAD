@@ -6,7 +6,8 @@ import numpy as np
 import logging
 import cv2
 import shutil
-import math 
+import math
+import h5py
 from scipy import ndimage
 import pandas as pd # for some simple data analysis (right now, just to load in the labels data and quickly reference it)
 import tensorflow as tf 
@@ -31,45 +32,11 @@ logging.basicConfig(
 log_dir = os.path.join(config.log_root, config.experiment_name)
 
 
-def get_latest_model_checkpoint_path(folder, name):
-    '''
-    Returns the checkpoint with the highest iteration number with a given name
-    :param folder: Folder where the checkpoints are saved
-    :param name: Name under which you saved the model
-    :return: The path to the checkpoint with the latest iteration
-    '''
-
-    iteration_nums = []
-    for file in glob.glob(os.path.join(folder, '%s*.meta' % name)):
-
-        file = file.split('/')[-1]
-        file_base, postfix_and_number, rest = file.split('.')[0:3]
-        it_num = int(postfix_and_number.split('-')[-1])
-
-        iteration_nums.append(it_num)
-
-    latest_iteration = np.max(iteration_nums)
-
-    return os.path.join(folder, name + '-' + str(latest_iteration))
-
-
 def run_training(continue_run):
         
         logging.info('EXPERIMENT NAME: %s' % config.experiment_name)
         
         init_step = 0
-        
-        if continue_run:
-        logging.info('!!!!!!!!!!!!!!!!!!!!!!!!!!!! Continuing previous run !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-        try:
-            init_checkpoint_path = get_latest_model_checkpoint_path(log_dir, 'model.ckpt')
-            logging.info('Checkpoint path: %s' % init_checkpoint_path)
-            init_step = int(init_checkpoint_path.split('/')[-1].split('-')[-1]) + 1  # plus 1 b/c otherwise starts with eval
-            logging.info('Latest step was: %d' % init_step)
-        except:
-            logging.warning('!!! Didnt find init checkpoint. Maybe first run failed. Disabling continue mode...')
-            continue_run = False
-            init_step = 0
         
         # load data
         data = read_data.load_and_maybe_process_data(
@@ -117,6 +84,18 @@ def run_training(continue_run):
         model, experiment_name = model_zoo.get_model(imgs_train, nlabels, config)
         model.summary()
         
+        #restore previous session
+        if continue_run:
+        logging.info('!!!!!!!!!!!!!!!!!!!!!!!!!!!! Continuing previous run !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        try:
+            model.load_weights(os.path.join(log_dir, 'model_best_weights.h5'))
+            logging.info('loading weights...')
+            logging.info('Latest epoch was: %d' % init_step)
+        except:
+            logging.warning('!!! Didnt find init checkpoint. Maybe first run failed. Disabling continue mode...')
+            continue_run = False
+            init_step = 0
+        
         if model.name in 'VGG16, InceptionV3, ResNet50, InceptionResNetV2, EfficientNetB0, EfficientNetB7, ResNet50V2' and config.data_mode == '3D':
             expand_dims = False   # (N,x,y,3)
         else:
@@ -147,6 +126,7 @@ def run_training(continue_run):
         lr_hist = []
         no_improvement_counter = 0
         last_train = np.inf
+        best_val = np.inf
         step = init_step
         
         logging.info('Using TensorFlow backend')
@@ -249,7 +229,19 @@ def run_training(continue_run):
                     for m_i in range(len(model.metrics_names)):
                         val_history[model.metrics_names[m_i]] = []
                 for key, ii in zip(val_history, range(len(val_history))):
-                    val_history[key].append(val_hist[i])           
+                    val_history[key].append(val_hist[ii])
+                
+                #save best model
+                if val_hist[0] < best_val:
+                    logging.info('val_loss improved from %f to %f, saving model to weights-improvement' % (best_val, val_hist[0]))
+                    best_val = val_hist[0]
+                    remove_file(log_dir)
+                    #Weights-only saving
+                    model.save_weights(os.path.join(log_dir, ('model_best_weights_' + str(round_up(best_val, 6)) + '_epoch_' + str(epoch) + '.h5')))
+                    #Whole-model saving (configuration + weights)
+                    #model.save(os.path.join(log_dir, 'best_model'))
+                else:
+                    logging.info('val_acc did not improve from %f' % best_val)
             
         #plot history (loss and metrics)
         for m_k in range(len(model.metrics_names)):
@@ -268,7 +260,17 @@ def run_training(continue_run):
         plt.show() 
 
 
+def remove_file(my_dir):
+    for fname in os.listdir(my_dir):
+        if fname.startswith('model_best_weights_'):
+            os.remove(os.path.join(my_dir, fname))
 
+
+def round_up(n, decimals=0):
+    multiplier = 10 ** decimals
+    return math.ceil(n * multiplier) / multiplier
+                                     
+                                     
 def do_eval(images, labels, nlabels, batch_size, mode, augment_batch=False, expand_dims=True):                           
     '''
     Function for running the evaluations on the validation sets.  
@@ -308,8 +310,7 @@ def do_eval(images, labels, nlabels, batch_size, mode, augment_batch=False, expa
         history[0][i] /= num_batches
                                      
     return history[0]
-
-                                     
+                               
                                      
 def flip_axis(x, axis):
     x = np.asarray(x).swapaxes(axis, 0)
