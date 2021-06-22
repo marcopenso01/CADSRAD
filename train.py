@@ -45,6 +45,7 @@ def run_training(continue_run):
                 mode=config.data_mode,
                 size=config.image_size,
                 target_resolution=config.target_resolution,
+                train=True,
                 force_overwrite=False
             )
         
