@@ -15,6 +15,7 @@ model_handle = model_zoo.VGG16_model
 #model_handle = model_zoo.EfficientNetB0_model
 #model_handle = model_zoo.EfficientNetB7_model
 #model_handle = model_zoo.ResNet50V2_model
+#model_handle = model_zoo.model_3d
 
 # fully-connected layer at the top of the network (for VGG16, Inception, ResNet and EfficientNet)
 dense_layer = (512, 512)    #Number of filters for each dense layer: example (512,512)--> two dense layer of 512 filters
