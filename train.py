@@ -82,7 +82,7 @@ def run_training(continue_run):
             raise AssertionError('Select a single learning rate decay')
         
         # Build a model
-        model, experiment_name = model_zoo.get_model(imgs_train, nlabels, config)
+        model = model_zoo.get_model(imgs_train, nlabels, config)
         model.summary()
         
         if model.name in 'VGG16, InceptionV3, ResNet50, InceptionResNetV2, EfficientNetB0, EfficientNetB7, ResNet50V2' and config.data_mode == '3D':
