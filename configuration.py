@@ -41,7 +41,10 @@ batch_size = 8
 learning_rate = 0.001   # initial learning rate value
 max_epochs = 1000
 
-#Decay Learning rate
+# Test settings
+gt_exists=True
+
+# Decay Learning rate
 time_decay = False      #LearningRate = LearningRate * 1/(1 + decay * epoch)
 step_decay = False      #LearningRate = InitialLearningRate * DropRate^floor(epoch / epochDrop)
 exp_decay = False       #LearningRate = InitialLearningRate * exp^(-decay * epoch)
