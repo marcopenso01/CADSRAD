@@ -311,6 +311,7 @@ def load_and_maybe_process_data(input_folder,
                                 mode,
                                 size,
                                 target_resolution,
+                                train,
                                 force_overwrite=False):
         
     '''
@@ -321,18 +322,24 @@ def load_and_maybe_process_data(input_folder,
     :param mode: Can either be '2D' or '3D'
     :param size: Size of the output slices/volumes in pixels/voxels
     :param target_resolution: Resolution to which the data should resampled. Should have same shape as size
+    :param train: Set this to True if you want preprocess training data
     :param force_overwrite: Set this to True if you want to overwrite already preprocessed data [default: False]
      
     :return: Returns an h5py.File handle to the dataset
     '''  
     size_str = '_'.join([str(i) for i in size])
     res_str = '_'.join([str(i) for i in target_resolution])
-
-    data_file_name = 'CADRADSdata_%s_size_%s_res_%s.hdf5' % (mode, size_str, res_str)
-
+    
+    if train: 
+        data_file_name = 'CADRADSdata_%s_size_%s_res_%s.hdf5' % (mode, size_str, res_str)
+    else:
+        data_file_name = 'testCAD_%s_size_%s_res_%s.hdf5' % (mode, size_str, res_str)
+                
     data_file_path = os.path.join(preprocessing_folder, data_file_name)
-
-    makefolder(preprocessing_folder)
+    
+    if not os.path.exists(preprocessing_folder):
+        
+        makefolder(preprocessing_folder)
 
     if not os.path.exists(data_file_path) or force_overwrite:
 
@@ -352,4 +359,4 @@ if __name__ == '__main__':
     # Paths settings
     input_folder = config.data_root
     preprocessing_folder = config.preprocessing_folder
-    d=load_and_maybe_process_data(input_folder, preprocessing_folder, config.data_mode, config.image_size, config.target_resolution)
+    d=load_and_maybe_process_data(input_folder, preprocessing_folder, config.data_mode, config.image_size, config.target_resolution, train, force_overwrite)
