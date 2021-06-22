@@ -14,7 +14,8 @@ import tensorflow as tf
 from keras.utils.np_utils import to_categorical
 from tensorflow.keras import backend as K
 from tensorflow.keras import layers 
-from tensorflow.keras import Model 
+from tensorflow.keras import Model
+from tensorflow.keras.models import load_model
 
 import configuration as config
 import read_data
@@ -81,42 +82,14 @@ def run_training(continue_run):
         if (config.time_decay and (config.step_decay or config.exp_decay or config.adaptive_decay)) or (config.step_decay and (config.exp_decay or config.adaptive_decay)) or (config.exp_decay and config.adaptive_decay):
             raise AssertionError('Select a single learning rate decay')
         
-        # Build a model
-        model = model_zoo.get_model(imgs_train, nlabels, config)
-        model.summary()
-        
-        if model.name in 'VGG16, InceptionV3, ResNet50, InceptionResNetV2, EfficientNetB0, EfficientNetB7, ResNet50V2' and config.data_mode == '3D':
-            expand_dims = False   # (N,x,y,3)
-        else:
-            expand_dims = True
-                    
-        #METRICS
-        if nlabels > 2:
-            loss = tf.keras.losses.categorical_crossentropy
-            metrics=[tf.keras.metrics.CategoricalAccuracy(), 
-                     tf.keras.metrics.AUC(),
-                     tf.keras.metrics.Recall(),
-                     tf.keras.metrics.Precision()]
-        else:
-            loss = tf.keras.losses.binary_crossentropy   
-            metrics=[tf.keras.metrics.BinaryAccuracy(), 
-                     tf.keras.metrics.AUC(),
-                     tf.keras.metrics.Recall(),
-                     tf.keras.metrics.Precision()]
-        
-        curr_lr = config.learning_rate
-        optimizer = tf.keras.optimizers.Adam(learning_rate=curr_lr, beta_1=0.9, beta_2=0.999, epsilon=1e-07)
-        
-        logging.info('compiling model...')
-        model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
-        
         #restore previous session
         if continue_run:
             logging.info('!!!!!!!!!!!!!!!!!!!!!!!!!!!! Continuing previous run !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
             try:
                 best_model_file, last_loss, last_epoch = get_latest_model_checkpoint(log_dir)
-                model.load_weights(os.path.join(log_dir, best_model_file))
-                logging.info('loading weights...')
+                #model.load_weights(os.path.join(log_dir, best_model_file))
+                model = load_model(os.path.join(log_dir, best_model_file)) ## returns a compiled model
+                logging.info('loading model...')
                 logging.info('Latest epoch was: %d' % last_epoch)
                 best_val = last_loss
                 init_epoch = last_epoch + 1  #plus 1 otherwise repeats last epoch
@@ -124,11 +97,39 @@ def run_training(continue_run):
                 logging.warning('!!! Didnt find init checkpoint. Maybe first run failed. Disabling continue mode...')
                 continue_run = False
                 init_step = 0
-                best_val = np.inf
-                init_epoch = 0
-        else:
+                
+        elif continue_run == False:
             best_val = np.inf
             init_epoch = 0
+            
+            # Build a model
+            model = model_zoo.get_model(imgs_train, nlabels, config)
+            model.summary()
+            
+            #METRICS
+            if nlabels > 2:
+                loss = tf.keras.losses.categorical_crossentropy
+                metrics=[tf.keras.metrics.CategoricalAccuracy(), 
+                         tf.keras.metrics.AUC(),
+                         tf.keras.metrics.Recall(),
+                         tf.keras.metrics.Precision()]
+            else:
+                loss = tf.keras.losses.binary_crossentropy   
+                metrics=[tf.keras.metrics.BinaryAccuracy(), 
+                         tf.keras.metrics.AUC(),
+                         tf.keras.metrics.Recall(),
+                         tf.keras.metrics.Precision()]
+            
+            curr_lr = config.learning_rate
+            optimizer = tf.keras.optimizers.Adam(learning_rate=curr_lr, beta_1=0.9, beta_2=0.999, epsilon=1e-07)
+        
+            logging.info('compiling model...')
+            model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
+       
+        if model.name in 'VGG16, InceptionV3, ResNet50, InceptionResNetV2, EfficientNetB0, EfficientNetB7, ResNet50V2' and config.data_mode == '3D':
+            expand_dims = False   # (N,x,y,3)
+        else:
+            expand_dims = True
         
         history  = {}   #It records training metrics for each epoch
         val_history = {}    #It records validation metrics for each epoch
@@ -244,9 +245,9 @@ def run_training(continue_run):
                     best_val = val_hist[0]
                     remove_file(log_dir)
                     #Weights-only saving
-                    model.save_weights(os.path.join(log_dir, ('model_best_weights_' + str(round_up(best_val, 6)) + '_epoch_' + str(epoch) + '.h5')))
+                    #model.save_weights(os.path.join(log_dir, ('model_best_weights_' + str(round_up(best_val, 6)) + '_epoch_' + str(epoch) + '.h5')))
                     #Whole-model saving (configuration + weights)
-                    #model.save(os.path.join(log_dir, 'best_model'))
+                    model.save(os.path.join(log_dir, ('model_best_weights_' + str(round_up(best_val, 6)) + '_epoch_' + str(epoch) + '.h5')))
                 else:
                     logging.info('val_acc did not improve from %f' % best_val)
             
