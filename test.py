@@ -118,6 +118,7 @@ def test_data(input_folder, output_folder, model_path, config, gt_exists=True):
   logging.info('confusion matrix:')
   print(metrics.confusion_matrix(ytrue, ypred))
   
+  plot_file = os.path.join(output_folder, 'roc.png')
   fpr = dict()
   tpr = dict()
   roc_auc = dict()
@@ -137,8 +138,27 @@ def test_data(input_folder, output_folder, model_path, config, gt_exists=True):
   plt.ylabel('True Positive Rate')
   plt.title('ROC curve')
   plt.legend(loc="lower right")
+  plt.savefig(plot_file, dpi=300, bbox_inches='tight')
   plt.show()
   
+  out_file = os.path.join(output_folder, 'results.txt')
+
+  with open(out_file, "w") as text_file:
+
+      text_file.write('\n\n-------------------------------------------------------------------------------------\n')
+      text_file.write('CADRADS\n')
+      text_file.write('-------------------------------------------------------------------------------------\n\n')
+
+      text_file.write('Accuracy classification score: {:.3f} \n'.format(metrics.accuracy_score(ytrue, ypred)))
+      text_file.write('Balanced accuracy score: {:.3f} \n'.format(metrics.balanced_accuracy_score(ytrue, ypred)))
+      text_file.write('Precision: {:.3f} \n'.format(metrics.precision_score(ytrue, ypred, average='micro')))
+      text_file.write('Weighted precision: {:.3f} \n'.format(metrics.precision_score(ytrue, ypred, average='weighted')))
+      text_file.write('Recall: {:.3f} \n'.format(metrics.recall_score(ytrue, ypred, average='micro')))
+      text_file.write('Weighted recall: {:.3f} \n'.format(metrics.recall_score(ytrue, ypred, average='weighted')))
+      text_file.write('F1-score: {:.3f} \n'.format(metrics.f1_score(ytrue, ypred, average='micro')))
+      text_file.write('Weighted F1-score: {:.3f} \n'.format(metrics.f1_score(ytrue, ypred, average='weighted')))
+    
+    
 if __name__ == '__main__':
   
   model_path = os.path.join(config.log_root, config.experiment_name)
