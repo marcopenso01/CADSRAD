@@ -47,7 +47,7 @@ def run_training(continue_run):
                 target_resolution=config.target_resolution,
                 train=True,
                 force_overwrite=False
-            )
+        )
         
         train_on_all_data = True
         
