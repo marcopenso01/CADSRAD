@@ -11,7 +11,9 @@ from sklearn.model_selection import train_test_split
 
 import configuration as config
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
+logging.basicConfig(
+    level=logging.INFO # allow DEBUG level messages to pass through the logger
+    )
 
 
 def makefolder(folder):
