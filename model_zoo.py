@@ -365,6 +365,49 @@ def ResNet50V2_model(input_tensor, nlabels, config):
   return model
 
 
+def model_3d(input_tensor, nlabels):
+    
+  inputs = Input(shape=(input_tensor.shape[1], input_tensor.shape[2], input_tensor.shape[3], 1))
+  print('input', inputs.shape)
+  x = layers.Conv3D(filters=32, kernel_size=3, activation="relu", kernel_initializer='he_normal', padding='same')(inputs)
+  print('con3d', x.shape)
+  x = layers.MaxPool3D(pool_size=2)(x)
+  print('max_pool', x.shape)
+  x = layers.BatchNormalization()(x)
+  print('batch', x.shape)
+
+  x = layers.Conv3D(filters=64, kernel_size=3, activation="relu", kernel_initializer='he_normal', padding='same')(x)
+  print('con3d', x.shape)
+  x = layers.MaxPool3D(pool_size=2)(x)
+  print('pool', x.shape)
+  x = layers.BatchNormalization()(x)
+  print('batch', x.shape)
+
+  x = layers.Conv3D(filters=128, kernel_size=3, activation="relu", kernel_initializer='he_normal', padding='same')(x)
+  print('conv3d',x.shape)
+  x = layers.MaxPool3D(pool_size=2)(x)
+  print('pool', x.shape)
+  x = layers.BatchNormalization()(x)
+  print('batch', x.shape)
+
+  x = layers.GlobalAveragePooling3D()(x)
+  print('globalPool', x.shape)
+  x = layers.Dense(units=512, kernel_initializer='he_normal', activation="relu")(x)
+  print('dense', x.shape)
+  x = layers.Dropout(0.3)(x)
+  print('drop', x.shape)
+  
+  if nlabels > 2:
+    outputs = layers.Dense(units=nlabels, kernel_initializer='he_normal', activation='softmax')(x)
+  else:
+    outputs = layers.Dense(units=nlabels-1, kernel_initializer='he_normal', activation='sigmoid')(x)
+  print('output', outputs.shape)
+
+  model = Model(inputs, outputs, name="3dcnn")
+
+  return model
+
+
 def get_init(type='he_normal'):
                
   if type == 'he_normal':
