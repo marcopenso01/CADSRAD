@@ -68,9 +68,10 @@ def run_training(continue_run):
         logging.info(' - Training Images:')
         logging.info(imgs_train.shape)
         logging.info(imgs_train.dtype)
-        logging.info(' - Validation Images:')
-        logging.info(imgs_val.shape)
-        logging.info(imgs_val.dtype)
+        if 'data_test' in data:
+            logging.info(' - Validation Images:')
+            logging.info(imgs_val.shape)
+            logging.info(imgs_val.dtype)
         
         # Class Mapping 
         logging.info('CAD - 0:Normal | 1:1-24% | 2:25-49% | 3:50-69% | 4:70-99% | 5:100%')
