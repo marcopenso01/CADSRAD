@@ -9,6 +9,7 @@ import pandas as pd # for some simple data analysis (right now, just to load in 
 import tensorflow as tf
 import sklearn.metrics as metrics
 from sklearn.preprocessing import label_binarize
+from tensorflow.keras.models import load_model
 import configuration as config
 import read_data
 import model_zoo as model_Zoo
@@ -76,9 +77,9 @@ def test_data(input_folder, output_folder, model_path, config, gt_exists=True):
   
   #restore previous session
   try:
+    logging.info('loading model...')
     best_model_file = get_latest_model_checkpoint(model_path)
     model = load_model(os.path.join(log_dir, best_model_file)) ## returns a compiled model
-    logging.info('loading model...')
   except:
     raise AssertionError('Impossible restore a compiled model')
   
@@ -88,7 +89,7 @@ def test_data(input_folder, output_folder, model_path, config, gt_exists=True):
   ypred = []
   ypred_prob = []
   
-  for ii in range(len(imgs_test[0])):
+  for ii in range(imgs_test.shape[0]):
     
     img = imgs_test[ii,...]
     label = label_test[ii,...]
@@ -157,8 +158,15 @@ def test_data(input_folder, output_folder, model_path, config, gt_exists=True):
       text_file.write('Weighted recall: {:.3f} \n'.format(metrics.recall_score(ytrue, ypred, average='weighted')))
       text_file.write('F1-score: {:.3f} \n'.format(metrics.f1_score(ytrue, ypred, average='micro')))
       text_file.write('Weighted F1-score: {:.3f} \n'.format(metrics.f1_score(ytrue, ypred, average='weighted')))
-    
-    
+      
+      text_file.write('----- Prediction ----- \n')
+      text_file.write('patient       real_class       pred_class       probability\n')
+        
+      for ii in range(ypred_prob.shape[0]):
+        
+        text_file.write('{}             {}                {}                {:.3f}\n'.format(patient_test[ii], ytrue[ii].tolist(), ypred[ii].tolist(), np.max(ypred_prob[ii].tolist())))
+
+
 if __name__ == '__main__':
   
   model_path = os.path.join(config.log_root, config.experiment_name)
