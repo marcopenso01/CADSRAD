@@ -254,6 +254,7 @@ def run_training(continue_run):
             
         #plot history (loss and metrics)
         for m_k in range(len(model.metrics_names)):
+            plt.figure()
             plt.plot(history[model.metrics_names[m_k]], label=model.metrics_names[m_k])
             plt.plot(val_history[model.metrics_names[m_k]], label=str('val_' + model.metrics_names[m_k]))
             plt.title(str('model '+ model.metrics_names[m_k]))
@@ -262,6 +263,7 @@ def run_training(continue_run):
             plt.ylabel(model.metrics_names[m_k])
             plt.show()
         #plot learning rate
+        plt.figure()
         plt.plot(lr_hist)
         plt.title('model learning rate')
         plt.xlabel('epoch')
