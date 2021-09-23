@@ -143,7 +143,7 @@ def run_training(continue_run):
         
         for epoch in range(init_epoch, config.max_epochs):
             
-            logging.info('EPOCH %d/%d' % (epoch, onfig.max_epochs))
+            logging.info('EPOCH %d/%d' % (epoch, config.max_epochs))
             
             temp_hist = {}   #It records training metrics for each batch
             
