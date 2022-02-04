@@ -78,49 +78,62 @@ for fold in os.listdir(input_folder):
         paz_path = os.path.join(cad_path, paz)
         
         for ramo in os.listdir(paz_path):
-            
-            count=0
-            sort = []
-            for file in os.listdir(os.path.join(paz_path, ramo)):
-                if count % 2 == 0:
-                    path_img = os.path.join(paz_path, ramo, file)
-                    img = np.array(cv2.imread(path_img,0)).astype("uint8")
-                    img = crop_or_pad_slice_to_size_specific_point(img, 610, 54, 470, 250)
-                    img = img[..., np.newaxis]
-                    sort.append[img]
-            for i in range(len(sort)):
-                if i ==0:
-                    img = sort[0]
+            if ramo in ['Circonflessa','CX','Coronaria destra','CDX','CDx','Ramo marginale','Ramo marginale ottuso','MO','Coronaria sinistra','Discendente anteriore','IVA','Discendente posteriore','Prima diagonale','Primo ramo diagonale','I DIAG','Branca intermedia','Secondo diagonale','II DIAG','Seconda discendente anteriore','Ramo posterolaterale','Secondo ramo marginale']:
+                count=0
+                sort = []
+                for file in os.listdir(os.path.join(paz_path, ramo)):
+                    if count % 2 == 0:
+                        path_img = os.path.join(paz_path, ramo, file)
+                        img = np.array(cv2.imread(path_img,0)).astype("uint8")
+                        print(fold, paz, ramo, file, img.shape)
+                        img = crop_or_pad_slice_to_size_specific_point(img, 610, 54, 470, 250)
+                        plt.figure()
+                        plt.imshow(img)
+                        img = img[..., np.newaxis]
+                        sort.append[(img)
+                    count +=1
+                for i in range(len(sort)):
+                    if i ==0:
+                        img = sort[0]
+                    else:
+                        img = np.concatenate((img, sort[i]), axis =-1)
+                CAD.append(fold.split('CAD')[-1])
+                IMG.append(img)
+                PAZ.append(paz)
+                if ramo == 'Circonflessa' or ramo == 'CX':
+                    CORONARIA.append(0)
+                elif ramo == 'Coronaria destra' or ramo == 'CDX' or ramo == 'CDx':
+                    CORONARIA.append(1)
+                elif ramo == 'Ramo marginale' or ramo == 'Ramo marginale ottuso' or ramo == 'MO':
+                    CORONARIA.append(2)
+                elif ramo == 'Coronaria sinistra':
+                    CORONARIA.append(3)
+                elif ramo == 'Discendente anteriore' or ramo == 'IVA':
+                    CORONARIA.append(4)
+                elif ramo == 'Discendente posteriore':
+                    CORONARIA.append(5)
+                elif ramo == 'Prima diagonale' or ramo == 'Primo ramo diagonale' or ramo == 'I DIAG':
+                    CORONARIA.append(6)
+                elif ramo == 'Branca intermedia':
+                    CORONARIA.append(7)
+                elif ramo == 'Secondo diagonale' or ramo == 'II DIAG':
+                    CORONARIA.append(8)
+                elif ramo == 'Seconda discendente anteriore':
+                    CORONARIA.append(9)
+                elif ramo == 'Ramo posterolaterale':
+                    CORONARIA.append(10)
+                elif ramo == 'Secondo ramo marginale':
+                    CORONARIA.append(11)
                 else:
-                    img = np.concatenate((img, sort[i]), axis =-1)
-            CAD.append(fold.split('CAD')[-1])
-            IMG.append(img)
-            PAZ.append(paz.split('PAZ ')[-1])
-            if ramo == 'Circonflessa':
-                CONORANRIA.append(0)
-            elif ramo == 'Coronaria destra':
-                CONORANRIA.append(1)
-            elif ramo == 'Ramo marginale':
-                CONORANRIA.append(2)
-            elif ramo == 'Coronaria sinistra':
-                CONORANRIA.append(3)
-            elif ramo == 'Discendente anteriore':
-                CONORANRIA.append(4)
-            elif ramo == 'Discendente posteriore':
-                CONORANRIA.append(5)
-            elif ramo == 'Prima diagonale':
-                CONORANRIA.append(6)
-            elif ramo == 'Branca intermedia':
-                CONORANRIA.append(7)
-            elif ramo == 'Secondo diagonale':
-                CONORANRIA.append(8)
+                    raise TypeError('name error!!!')
+            else:
+                continue
             
 output_fold = os.path.join(input_folder, 'pre_proc')
 if not os.path.exists(output_fold):
         makefolder(output_fold)
         
 hdf5_file = h5py.File(os.path.join(output_fold, 'data.hdf5'), "w")
-
 
 hdf5_file.create_dataset('paz', (len(PAZ),), dtype=np.uint8)
 hdf5_file.create_dataset('cad', (len(CAD),), dtype=np.uint8)
@@ -132,6 +145,5 @@ for i in range(len(PAZ)):
      hdf5_file['cad'][i, ...] = CAD[i]
      hdf5_file['img'][i, ...] = IMG[i]
      hdf5_file['tratto'][i, ...] = CONORANRIA[i]
-  
-    # After loop:
-    hdf5_file.close()
+# After loop:
+hdf5_file.close()
