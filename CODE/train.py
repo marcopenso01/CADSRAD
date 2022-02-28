@@ -3,6 +3,7 @@ import os
 import h5py
 import skimage.io as io
 import skimage.transform as trans
+from skimage import exposure
 import matplotlib.pyplot as plt
 from scipy import ndimage
 import tensorflow as tf
@@ -10,6 +11,7 @@ from tensorflow.keras.utils import plot_model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.optimizers import 
 import logging
+import random
 from sklearn.utils import shuffle
 import model_zoo as model_zoo
 from packaging import version
@@ -140,6 +142,29 @@ def train_test_split(img_data, cad_data, paz_data, ramo_data):
     yield train_img, train_cad, train_ramo, test_img, test_cad, test_ramo, val_img, val_cad, val_ramo
   
 
+def augmentation_function(images):
+    '''
+    Function for augmentation of minibatches.
+    :param images: A numpy array of shape [minibatch, X, Y, nchannels]
+    :return: A mini batch of the same size but with transformed images and masks. 
+    '''
+    new_images = []
+    num_images = images.shape[0]
+    channels = images.shape[-1]
+    for ii in range(num_images):
+        img = images[ii,...]
+        # FLIP  up/down
+        for ch in range(channels):
+            if np.random.randint(2):
+                img[...,ch] = np.flipud(img[...,ch])
+        # RANDOM GAMMA CORRECTION
+        gamma = random.randrange(8,13,1)
+        img = exposure.adjust_gamma(img, gamma/10)
+        
+        new_images.append(img)
+    sampled_image_batch = np.asarray(new_images)
+    return sampled_image_batch
+
 def iterate_minibatches(images, labels, batch_size, augment_batch=False, expand_dims=True):
     '''
     Function to create mini batches from the dataset of a certain batch size 
@@ -150,7 +175,23 @@ def iterate_minibatches(images, labels, batch_size, augment_batch=False, expand_
     :param expand_dims: adding a dimension, Boolean (default: True)
     :return: mini batches
     '''
-    
+    n_images = images.shape[0]
+    random_indices = np.arange(n_images)
+    np.random.shuffle(random_indices)
+    for b_i in range(0,n_images,batch_size):
+        if b_i + batch_size > n_images:
+            continue
+        batch_indices = np.sort(random_indices[b_i:b_i+batch_size])
+        X = images[batch_indices, ...]
+
+        if expand_dims:        
+            X = X[...,np.newaxis]   #array of shape [minibatch, X, Y, nchannels]
+
+        if augment_batch:
+            X = augmentation_function(X)
+        
+        yield X, y
+        
     
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 PATH
