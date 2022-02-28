@@ -26,7 +26,7 @@ def model1(input_size = (256,256,3)):
   x = BatchNormalization()(x)
   
   x = Flatten()(x)
-  x = Dense(256, activation='relu', kernel_initializer='he_normal')(x)
+  x = Dense(128, activation='relu', kernel_initializer='he_normal')(x)
   x = Dropout(0.3)(x)
   x = Dense(64, activation='relu', kernel_initializer='he_normal')(x)
   x = Dropout(0.3)(x)
