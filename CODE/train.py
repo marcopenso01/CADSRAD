@@ -7,10 +7,13 @@ import matplotlib.pyplot as plt
 from scipy import ndimage
 import tensorflow as tf
 from tensorflow.keras.utils import plot_model
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.keras.optimizers import 
 import logging
 from sklearn.utils import shuffle
-import model_structure
-import losses
+import model_zoo as model_zoo
+from packaging import version
+from tensorflow.python.client import device_lib
 logging.basicConfig(
     level=logging.INFO # allow DEBUG level messages to pass through the logger
     )
@@ -133,10 +136,22 @@ def train_test_split(img_data, cad_data, paz_data, ramo_data):
     tr_cad = []
     tr_paz = []
     tr_ramo = []
-            
+    
     yield train_img, train_cad, train_ramo, test_img, test_cad, test_ramo, val_img, val_cad, val_ramo
   
-  
+
+def iterate_minibatches(images, labels, batch_size, augment_batch=False, expand_dims=True):
+    '''
+    Function to create mini batches from the dataset of a certain batch size 
+    :param images: input data shape (N, W, H)
+    :param labels: label data
+    :param batch_size: batch size (Int)
+    :param augment_batch: should batch be augmented?, Boolean (default: False)
+    :param expand_dims: adding a dimension, Boolean (default: True)
+    :return: mini batches
+    '''
+    
+    
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 PATH
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -149,13 +164,73 @@ if not os.path.exists(output_folder):
   makefolder(output_folder)
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-LOAD TRAIN DATA
+LOAD DATA
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 logging.info('\nLoading data...')
-data = h5py.File(os.path.join(input_folder,'data.hdf5'), 'r')
-img_data = data['img'][()]
-cad_data = data['cad'][()]
-paz_data = data['paz'][()]
-ramo_data = data['ramo'][()]
-
-
+file = h5py.File(os.path.join(input_folder,'data.hdf5'), 'r')
+img_data = file['img'][()]
+cad_data = file['cad'][()]
+paz_data = file['paz'][()]
+ramo_data = file['ramo'][()]
+file.close()
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+HYPERPARAMETERS
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+batch_size = 2
+epochs = 100
+curr_lr = 1e-3
+input_size = img_data[0].shape
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+TRAINING 
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+#itero su k-fold
+k = 0
+for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
+    train_img, train_cad, train_ramo, test_img, test_cad, test_ramo, val_img, val_cad, val_ramo = data
+    print('-' * 70)
+    print('Analyzing fold: %d' % k)
+    print('-' * 70)
+    
+    out_fold = os.path.join(output_folder, str('fold'+k))
+    if not os.path.exists(out_fold):
+        makefolder(out_fold)
+        out_file = os.path.join(out_fold, 'summary_report.txt')
+        with open(out_file, "w") as text_file:
+            text_file.write('\n\n--------------------------------------------------------------------------\n')
+            text_file.write('Model summary\n')
+            text_file.write('----------------------------------------------------------------------------\n\n')
+    
+    print('training data', len(train_img), train_img[0].shape, train_img[0].dtype)
+    print('validation data', len(val_img), val_img[0].shape, val_img[0].dtype)
+    print('testing data', len(test_img), test_img[0].shape, test_img[0].dtype)
+    
+    print('\nCreating and compiling model...')
+    model = model_zoo.model1(input_size = input_size)
+    
+    with open(out_file, "a") as text_file:
+        # Pass the file handle in as a lambda function to make it callable
+        model.summary(print_fn=lambda x: text_file.write(x + '\n'))
+    
+    opt = Adam(learning_rate=curr_lr)
+    model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy',
+                                                                      tf.keras.metrics.AUC()]
+    print('model prepared...')
+    print('Start training...')
+    
+    step = 0
+    for epoch in range(epochs):
+        print('Epoch %d/%d' % (epoch+1, epochs))
+        for batch in iterate_minibatches(train_img,
+                                         train_cad,
+                                         batch_size=batch_size,
+                                         augment_batch=True,
+                                         expand_dims=True):
+            x, y = batch
+            #TEMPORARY HACK (to avoid incomplete batches)
+            if y.shape[0] < batch_size:
+                step += 1
+                continue
+            
+            hist = model.train_on_batch(x,y)
+            
+            
