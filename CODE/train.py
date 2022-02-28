@@ -7,6 +7,7 @@ from skimage import exposure
 import matplotlib.pyplot as plt
 from scipy import ndimage
 import tensorflow as tf
+from tensorflow.keras import backend as K
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.optimizers import 
@@ -142,6 +143,32 @@ def train_test_split(img_data, cad_data, paz_data, ramo_data):
     yield train_img, train_cad, train_ramo, test_img, test_cad, test_ramo, val_img, val_cad, val_ramo
   
 
+def zoom(img, zoom_factor):
+
+    height, width = img.shape[:2] # It's also the final desired shape
+    new_height, new_width = int(height * zoom_factor), int(width * zoom_factor)
+
+    ### Crop only the part that will remain in the result (more efficient)
+    # Centered bbox of the final desired size in resized (larger/smaller) image coordinates
+    y1, x1 = max(0, new_height - height) // 2, max(0, new_width - width) // 2
+    y2, x2 = y1 + height, x1 + width
+    bbox = np.array([y1,x1,y2,x2])
+    # Map back to original image coordinates
+    bbox = (bbox / zoom_factor).astype(np.int)
+    y1, x1, y2, x2 = bbox
+    cropped_img = img[y1:y2, x1:x2]
+    # Handle padding when downscaling
+    resize_height, resize_width = min(new_height, height), min(new_width, width)
+    pad_height1, pad_width1 = (height - resize_height) // 2, (width - resize_width) //2
+    pad_height2, pad_width2 = (height - resize_height) - pad_height1, (width - resize_width) - pad_width1
+    pad_spec = [(pad_height1, pad_height2), (pad_width1, pad_width2)] + [(0,0)] * (img.ndim - 2)
+
+    result = cv2.resize(cropped_img, (resize_width, resize_height))
+    result = np.pad(result, pad_spec, mode='constant')
+    assert result.shape[0] == height and result.shape[1] == width
+    return result
+
+
 def augmentation_function(images):
     '''
     Function for augmentation of minibatches.
@@ -160,10 +187,14 @@ def augmentation_function(images):
         # RANDOM GAMMA CORRECTION
         gamma = random.randrange(8,13,1)
         img = exposure.adjust_gamma(img, gamma/10)
+        # ZOOM
+        if np.random.randint(2):
+            img = zoom(img, round(random.uniform(0.97,1.03), 2))
         
         new_images.append(img)
     sampled_image_batch = np.asarray(new_images)
     return sampled_image_batch
+
 
 def iterate_minibatches(images, labels, batch_size, augment_batch=False, expand_dims=True):
     '''
@@ -184,15 +215,24 @@ def iterate_minibatches(images, labels, batch_size, augment_batch=False, expand_
         batch_indices = np.sort(random_indices[b_i:b_i+batch_size])
         X = images[batch_indices, ...]
 
-        if expand_dims:        
-            X = X[...,np.newaxis]   #array of shape [minibatch, X, Y, nchannels]
-
         if augment_batch:
             X = augmentation_function(X)
+        if expand_dims:        
+            X = X[...,np.newaxis]   #array of shape [minibatch, X, Y, nchannels]
         
         yield X, y
         
-    
+
+def get_f1(y_true, y_pred):
+    TP = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+    Positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+    recall = TP / (Positives+K.epsilon())
+    Pred_Positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+    precision = TP / (Pred_Positives+K.epsilon())
+    f1_val = 2*(precision*recall)/(precision+recall+K.epsilon())
+    return f1_val
+
+
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 PATH
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -225,14 +265,14 @@ input_size = img_data[0].shape
 TRAINING 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 #itero su k-fold
-k = 0
+k_fold = 0
 for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     train_img, train_cad, train_ramo, test_img, test_cad, test_ramo, val_img, val_cad, val_ramo = data
     print('-' * 70)
-    print('Analyzing fold: %d' % k)
+    print('---- Starting fold %d ----'% k_fold)
     print('-' * 70)
     
-    out_fold = os.path.join(output_folder, str('fold'+k))
+    out_fold = os.path.join(output_folder, str('fold'+k_fold))
     if not os.path.exists(out_fold):
         makefolder(out_fold)
         out_file = os.path.join(out_fold, 'summary_report.txt')
@@ -241,9 +281,9 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
             text_file.write('Model summary\n')
             text_file.write('----------------------------------------------------------------------------\n\n')
     
-    print('training data', len(train_img), train_img[0].shape, train_img[0].dtype)
-    print('validation data', len(val_img), val_img[0].shape, val_img[0].dtype)
-    print('testing data', len(test_img), test_img[0].shape, test_img[0].dtype)
+    print('training data', train_img.shape, train_img[0].dtype)
+    print('validation data', val_img.shape, val_img[0].dtype)
+    print('testing data', test_img.shape, test_img[0].dtype)
     
     print('\nCreating and compiling model...')
     model = model_zoo.model1(input_size = input_size)
@@ -254,12 +294,16 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     
     opt = Adam(learning_rate=curr_lr)
     model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy',
-                                                                      tf.keras.metrics.AUC()]
+                                                                      get_f1])
     print('model prepared...')
     print('Start training...')
     
     step = 0
+    no_improvement_counter = 0
+    train_history  = {}   #It records training metrics for each epoch
+    val_history = {}    #It records validation metrics for each epoch
     for epoch in range(epochs):
+        temp_hist = {}
         print('Epoch %d/%d' % (epoch+1, epochs))
         for batch in iterate_minibatches(train_img,
                                          train_cad,
@@ -274,4 +318,16 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
             
             hist = model.train_on_batch(x,y)
             
+            if temp_hist == {}:
+                for m_i in range(len(model.metrics_names)):
+                    temp_hist[model.metrics_names[m_i]] = []
+                
+            for key, i in zip(temp_hist, range(len(temp_hist))):
+                    temp_hist[key].append(hist[i])
             
+            if (step + 1) % 20 == 0:
+                logging.info(str('step: %d '+name_metric[0]+': %.3f '+name_metric[1]+': %.3f '+name_metric[2]+': %.3f '
+                +name_metric[3]+': %.3f '+name_metric[4]+': %.3f '+name_metric[5]+': %.3f') % 
+                             (step+1, hist[0], hist[1], hist[2], hist[3], hist[4], hist[5]))
+        
+            step += 1  #fine batch
