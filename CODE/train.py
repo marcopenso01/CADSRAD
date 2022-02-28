@@ -223,6 +223,39 @@ def iterate_minibatches(images, labels, batch_size, augment_batch=False, expand_
         yield X, y
         
 
+def do_eval(images, labels, batch_size, expand_dims=True):                           
+    '''
+    Function for running the evaluations on the validation sets.  
+    :param images: A numpy array containing the images
+    :param labels: A numpy array containing the corresponding labels 
+    :param batch_size: batch size
+    :param expand_dims: adding a dimension to a tensor? 
+    :return: Scalar val loss and metrics
+    '''
+    num_batches = 0
+    history = []
+    for batch in iterate_minibatches(images, 
+                                     labels,
+                                     batch_size,
+                                     augment_batch = False
+                                     expand_dims):
+        x, y = batch
+        if y.shape[0] < batch_size:
+            continue
+        
+        val_hist = model.test_on_batch(x,y)
+        if history == []:
+            history.append(val_hist)
+        else:
+            history[0] = [x + y for x, y in zip(history[0], val_hist)]
+        num_batches += 1
+
+    for i in range(len(history[0])):
+        history[0][i] /= num_batches
+    
+    return history[0]
+
+
 def get_f1(y_true, y_pred):
     TP = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
     Positives = K.sum(K.round(K.clip(y_true, 0, 1)))
@@ -300,6 +333,7 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     
     step = 0
     no_improvement_counter = 0
+    best_val_loss = float('inf')
     train_history  = {}   #It records training metrics for each epoch
     val_history = {}    #It records validation metrics for each epoch
     for epoch in range(epochs):
@@ -326,8 +360,59 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
                     temp_hist[key].append(hist[i])
             
             if (step + 1) % 20 == 0:
-                logging.info(str('step: %d '+name_metric[0]+': %.3f '+name_metric[1]+': %.3f '+name_metric[2]+': %.3f '
-                +name_metric[3]+': %.3f '+name_metric[4]+': %.3f '+name_metric[5]+': %.3f') % 
-                             (step+1, hist[0], hist[1], hist[2], hist[3], hist[4], hist[5]))
+                print('step: %d, %s: %.3f, %s: %.3f, %s: %.3f' %
+                      (step+1, model.metrics_names[0], hist[0], model.metrics_names[1],
+                       hist[1], model.metrics_names[2], hist[2]))
         
             step += 1  #fine batch
+        
+        for key in temp_hist:
+            temp_hist[key] = sum(temp_hist[key])/len(temp_hist[key])
+        
+        print('Training data Eval')
+        print('%s: %.3f, %s: %.3f, %s: %.3f' % 
+              (model.metrics_names[0], +': %.3f', temp_hist[model.metrics_names[0]],
+               model.metrics_names[1], +': %.3f', temp_hist[model.metrics_names[1]],
+               model.metrics_names[2], +': %.3f', temp_hist[model.metrics_names[2]]))
+        
+        if train_history == {}:
+            for m_i in range(len(model.metrics_names)):
+                train_history[model.metrics_names[m_i]] = []
+        for key in train_history:
+            train_history[key].append(temp_hist[key])
+        
+        print('Validation data Eval')
+        val_hist = do_eval(val_img, val_cad,
+                           batch_size=batch_size,
+                           expand_dims=True)
+        
+        if val_history == {}:
+            for m_i in range(len(model.metrics_names)):
+                val_history[model.metrics_names[m_i]] = []
+        for key, ii in zip(val_history, range(len(val_history))):
+            val_history[key].append(val_hist[ii])
+            
+        #save best model
+        if val_hist[0] < best_val_loss:
+            no_improvement_counter = 0
+            print('val_loss improved from %.3f to %.3f, saving model to weights-improvement' % (best_val_dice, val_hist[0]))
+            best_val_loss = val_hist[0]
+            #model.save(os.path.join(log_dir, 'model_weights.h5'))
+            model.save_weights(os.path.join(out_fold, 'model_weights.h5'))
+        else:
+            no_improvement_counter += 1
+            print('val_loss did not improve for %d epochs' % no_improvement_counter)
+        
+        #ReduceLROnPlateau
+        if no_improvement_counter % 5 == 0:
+            curr_lr = curr_lr * 0.1
+            K.set_value(model.optimizer.learning_rate, curr_lr)
+            
+        #EarlyStopping
+        if no_improvement_counter > 15:  # Early stop if val loss does not improve after n epochs
+            print('Early stop at epoch %d' % (epoch+1))
+            break
+
+    print('\nModel correctly trained and saved')
+    
+    
