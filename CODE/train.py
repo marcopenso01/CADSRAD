@@ -305,6 +305,14 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     print('---- Starting fold %d ----'% k_fold)
     print('-' * 70)
     
+    #set classes: cad0-2 vs cad 3-5
+    train_cad[train_cad<3]=0
+    train_cad[train_cad>0]=1
+    test_cad[test_cad<3]=0
+    test_cad[test_cad>0]=1
+    val_cad[val_cad<3]=0
+    val_cad[val_cad>0]=1
+    
     out_fold = os.path.join(output_folder, str('fold'+k_fold))
     if not os.path.exists(out_fold):
         makefolder(out_fold)
@@ -407,6 +415,7 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
         if no_improvement_counter % 5 == 0:
             curr_lr = curr_lr * 0.1
             K.set_value(model.optimizer.learning_rate, curr_lr)
+            print('Learning rate changed from %.6f to %.6f' % (curr_lr*10, curr_lr))
             
         #EarlyStopping
         if no_improvement_counter > 15:  # Early stop if val loss does not improve after n epochs
