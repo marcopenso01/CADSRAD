@@ -487,6 +487,7 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     print_txt(out_fold, ['\nTesting data %d' % len(test_images)])
     print('Loading saved weights...')
     model = tf.keras.models.load_model(os.path.join(out_fold, 'model_weights.h5'))
+    print('Predicting...')
     prediction = model.predict(test_img)
     
     # calculate roc curves
@@ -548,42 +549,16 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     print_txt(out_fold, ['\nSpecificity: %.2f' % (TN / (TN + FP))])
     print_txt(out_fold, ['\nNeg predictive value: %.2f' % (TN / (FN + TN))])
     print_txt(out_fold, ['\nF1: %.2f' % (2*(prec*rec)/(prec+rec))])
-    print_txt(out_fold, ['\nAcc: %.2f\n' % ((TP+TN)/(TN+FN+TP+FP))])
+    print_txt(out_fold, ['\nAcc: %.2f' % ((TP+TN)/(TN+FN+TP+FP))])
+    print_txt(out_fold, ['\nBalanced_Acc: %.2f\n' % metrics.balanced_accuracy_score(test_cad, pred_adj)])
 
     with open(out_file, "a") as text_file:
         text_file.write('\n----- Prediction ----- \n')
         text_file.write('real_class       probability\n')
         for ii in range(len(prediction)):
             text_file.write(
-                '%d                %.3f\n' % (test_patient[ii], test_labels[ii], prediction[ii]))
+                '%d                %.3f\n' % (test_cad[ii], prediction[ii]))
 
-
-    list_paz = np.unique(test_patient)
-    for pp in range(len(list_paz)):
-        print('\ntesting patient %d' % list_paz[pp])
-        print_txt(output_folder, ['\ntesting patient %d' % list_paz[pp]])
-        temp_data = []
-        temp_out = []
-        for ii in range(len(test_images)):
-            if test_patient[ii] == list_paz[pp]:
-                temp_data.append(test_images[ii])
-                temp_out.append(test_labels[ii])
-        temp_data = np.asarray(temp_data)
-        temp_out = np.asarray(temp_out)
-        prediction = model.predict(temp_data)
-        print('ROC AUC: %f' % metrics.roc_auc_score(temp_out, prediction))
-        print_txt(output_folder, ['\nROC AUC: %f' % metrics.roc_auc_score(temp_out, prediction)])
-
-    paz = []
-    lab = []
-    pred = []
-    for ii in range(len(prediction)):
-        paz.append(test_patient[ii])
-        lab.append(test_labels[ii])
-        pred.append(prediction[ii])
-    df1 = pd.DataFrame({'paz': paz, 'lab': lab, 'pred': pred})
-    df1.to_excel(os.path.join(directory, fold_name, 'Excel_df1.xlsx'))
-
-    del test_images
-    del test_labels
-    del test_patient
+    df1 = pd.DataFrame({'labl': test_cad, 'pred': prediction})
+    df1.to_excel(os.path.join(out_fold, 'Excel_df1.xlsx'))
+    
