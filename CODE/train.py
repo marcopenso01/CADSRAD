@@ -1,25 +1,43 @@
-import numpy as np 
 import os
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# The GPU id to use, usually either "0" or "1"
+# for GPU process:
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+
+import numpy as np 
 import h5py
 import skimage.io as io
 import skimage.transform as trans
 from skimage import exposure
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
 from scipy import ndimage
 import tensorflow as tf
 from tensorflow.keras import backend as K
 from tensorflow.keras.utils import plot_model
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-from tensorflow.keras.optimizers import 
+from tensorflow.keras.optimizers import Adam
 import logging
 import random
 from sklearn.utils import shuffle
+from sklearn import metrics
 import model_zoo as model_zoo
 from packaging import version
 from tensorflow.python.client import device_lib
 logging.basicConfig(
     level=logging.INFO # allow DEBUG level messages to pass through the logger
     )
+
+assert 'GPU' in str(device_lib.list_local_devices())
+
+print('is_gpu_available: %s' % tf.test.is_gpu_available())  # True/False
+# Or only check for gpu's with cuda support
+print('gpu with cuda support: %s' % tf.test.is_gpu_available(cuda_only=True))
+# tf.config.list_physical_devices('GPU') #The above function is deprecated in tensorflow > 2.1
+
+print("TensorFlow version: ", tf.__version__)
+assert version.parse(tf.__version__).release[0] >= 2, \
+    "this notebook requires Tensorflow 2.0 or above"
+
 
 def standardize_image(image):
     '''
@@ -336,7 +354,7 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     opt = Adam(learning_rate=curr_lr)
     model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy',
                                                                       get_f1])
-    print('model prepared...')
+    print('Model prepared...')
     print('Start training...')
     
     step = 0
@@ -423,5 +441,25 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
             break
 
     print('\nModel correctly trained and saved')
+    # Plot
+    plt.figure(figsize=(8, 8))
+    plt.grid(False)
+    plt.title("Learning curve LOSS", fontsize=20)
+    plt.plot(train_history["loss"], label="Loss")
+    plt.plot(val_history["val_loss"], label="Validation loss")
+    p = np.argmin(val_history["val_loss"])
+    plt.plot(p, val_history["val_loss"][p], marker="x", color="r", label="best model")
+    plt.xlabel("Epochs", fontsize=16)
+    plt.ylabel("Loss", fontsize=16)
+    plt.legend();
+    plt.savefig(os.path.join(out_fold, 'Loss'), dpi=300)
+    plt.close()
     
+    # free memory
+    del train_img
+    del val_img
+    
+    """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    TESTING AND EVALUATING THE MODEL
+    """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     
