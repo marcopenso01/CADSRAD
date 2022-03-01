@@ -284,6 +284,25 @@ def get_f1(y_true, y_pred):
     return f1_val
 
 
+def print_txt(output_dir, stringa):
+    out_file = os.path.join(output_dir, 'summary_report.txt')
+    with open(out_file, "a") as text_file:
+        text_file.writelines(stringa)
+
+
+# apply threshold to positive probabilities to create labels
+def to_labels(pos_probs, threshold):
+    return (pos_probs >= threshold).astype('int')
+
+
+def adjusted_classes(y_scores, t):
+    """
+    This function adjusts class predictions based on the prediction threshold (t).
+    Will only work for binary classification problems.
+    """
+    return [1 if y >= t else 0 for y in y_scores]
+
+
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 PATH
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -340,9 +359,8 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
             text_file.write('Model summary\n')
             text_file.write('----------------------------------------------------------------------------\n\n')
     
-    print('training data', train_img.shape, train_img[0].dtype)
-    print('validation data', val_img.shape, val_img[0].dtype)
-    print('testing data', test_img.shape, test_img[0].dtype)
+    print('Training data', train_img.shape, train_img[0].dtype)
+    print('Validation data', val_img.shape, val_img[0].dtype)
     
     print('\nCreating and compiling model...')
     model = model_zoo.model1(input_size = input_size)
@@ -462,4 +480,110 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     TESTING AND EVALUATING THE MODEL
     """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    print('-' * 50)
+    print('Testing...')
+    print('-' * 50)
+    print('Testing data', test_img.shape, test_img[0].dtype)
+    print_txt(out_fold, ['\nTesting data %d' % len(test_images)])
+    print('Loading saved weights...')
+    model = tf.keras.models.load_model(os.path.join(out_fold, 'model_weights.h5'))
+    prediction = model.predict(test_img)
     
+    # calculate roc curves
+    fpr, tpr, thresholds = metrics.roc_curve(test_cad, prediction, pos_label=1)
+    aucc = metrics.roc_auc_score(test_cad, prediction)
+    # plot the roc curve for the model
+    plt.figure()
+    plt.plot([0, 1], [0, 1], linestyle='--', label='No Skill')
+    plt.plot(fpr, tpr, marker='.', label="ROC curve (area = %0.2f)" % aucc)
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.legend()
+    plt.savefig(os.path.join(out_fold, 'AUC'), dpi=300)
+    plt.close()
+    
+    # define thresholds
+    thresholds = np.arange(0, 1, 0.001)
+    # evaluate each threshold
+    scores = [metrics.f1_score(test_cad, to_labels(prediction, t)) for t in thresholds]
+    # get best threshold
+    ix = np.argmax(scores)
+    print_txt(out_fold, ['\nThreshold=%.3f, F-Score=%.5f' % (thresholds[ix], scores[ix])])
+    pred_adj = adjusted_classes(prediction, thresholds[ix])
+    # precision
+    #precision = metrics.precision_score(test_cad, pred_adj)
+    #print_txt(out_fold, ['\nPrecision: %.2f' % precision])
+    # recall
+    #recall = metrics.recall_score(test_cad, pred_adj)
+    #print_txt(out_fold, ['\nRecall: %.2f' % recall])
+    # f1
+    #f1 = metrics.f1_score(test_cad, pred_adj)
+    #print_txt(out_fold, ['\nf1: %.2f' % f1])
+    # ROC AUC
+    print('ROC AUC: %f' % aucc)
+    print_txt(out_fold, ['\nROC AUC: %f' % aucc])
+
+    # print(metrics.classification_report(test_labels, pred_adj))
+    print_txt(out_fold, ['\n\n %s \n\n' % metrics.classification_report(test_cad, pred_adj)])
+
+    CM = metrics.confusion_matrix(test_cad, pred_adj)
+    disp = metrics.ConfusionMatrixDisplay(CM)
+    disp.plot()
+    # plt.show()
+    plt.savefig(os.path.join(out_fold, 'Conf_matrix'), dpi=300)
+    plt.close()
+
+    TN = CM[0][0]
+    print_txt(out_fold, ['\ntrue negative: %d' % TN])
+    FN = CM[1][0]
+    print_txt(out_fold, ['\nfalse negative: %d' % FN])
+    TP = CM[1][1]
+    print_txt(out_fold, ['\ntrue positive: %d' % TP])
+    FP = CM[0][1]
+    print_txt(out_fold, ['\nfalse positive: %d' % FP])
+    prec = TP / (TP + FP)
+    print_txt(out_fold, ['\nPrecision or Pos predictive value: %.2f' % prec])
+    rec = TP / (TP + FN)
+    print_txt(out_fold, ['\nRecall: %.2f' % rec])
+    print_txt(out_fold, ['\nSpecificity: %.2f' % (TN / (TN + FP))])
+    print_txt(out_fold, ['\nNeg predictive value: %.2f' % (TN / (FN + TN))])
+    print_txt(out_fold, ['\nF1: %.2f' % (2*(prec*rec)/(prec+rec))])
+    print_txt(out_fold, ['\nAcc: %.2f\n' % ((TP+TN)/(TN+FN+TP+FP))])
+
+    with open(out_file, "a") as text_file:
+        text_file.write('\n----- Prediction ----- \n')
+        text_file.write('real_class       probability\n')
+        for ii in range(len(prediction)):
+            text_file.write(
+                '%d                %.3f\n' % (test_patient[ii], test_labels[ii], prediction[ii]))
+
+
+    list_paz = np.unique(test_patient)
+    for pp in range(len(list_paz)):
+        print('\ntesting patient %d' % list_paz[pp])
+        print_txt(output_folder, ['\ntesting patient %d' % list_paz[pp]])
+        temp_data = []
+        temp_out = []
+        for ii in range(len(test_images)):
+            if test_patient[ii] == list_paz[pp]:
+                temp_data.append(test_images[ii])
+                temp_out.append(test_labels[ii])
+        temp_data = np.asarray(temp_data)
+        temp_out = np.asarray(temp_out)
+        prediction = model.predict(temp_data)
+        print('ROC AUC: %f' % metrics.roc_auc_score(temp_out, prediction))
+        print_txt(output_folder, ['\nROC AUC: %f' % metrics.roc_auc_score(temp_out, prediction)])
+
+    paz = []
+    lab = []
+    pred = []
+    for ii in range(len(prediction)):
+        paz.append(test_patient[ii])
+        lab.append(test_labels[ii])
+        pred.append(prediction[ii])
+    df1 = pd.DataFrame({'paz': paz, 'lab': lab, 'pred': pred})
+    df1.to_excel(os.path.join(directory, fold_name, 'Excel_df1.xlsx'))
+
+    del test_images
+    del test_labels
+    del test_patient
