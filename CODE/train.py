@@ -208,8 +208,14 @@ def augmentation_function(images):
         # ZOOM
         if np.random.randint(2):
             img = zoom(img, round(random.uniform(0.97,1.03), 2))
+        # CHANNELS SHUFFLE
+        random_indices = np.arange(img.shape[-1])
+        np.random.shuffle(random_indices)
+        np.random.shuffle(random_indices)
+        img_sh = img[...,[random_indices]]
+        img_sh = np.squeeze(img_sh)
         
-        new_images.append(img)
+        new_images.append(img_sh)
     sampled_image_batch = np.asarray(new_images)
     return sampled_image_batch
 
