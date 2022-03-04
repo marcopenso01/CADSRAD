@@ -357,7 +357,7 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     val_cad[val_cad<3]=0
     val_cad[val_cad>0]=1
     
-    out_fold = os.path.join(output_folder, str('fold'+k_fold))
+    out_fold = os.path.join(output_folder, 'fold'+str(k_fold))
     if not os.path.exists(out_fold):
         makefolder(out_fold)
         out_file = os.path.join(out_fold, 'summary_report.txt')
