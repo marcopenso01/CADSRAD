@@ -32,5 +32,5 @@ def model1(input_size = (256,256,3)):
   x = Dropout(0.3)(x)
   # Add a final sigmoid layer with 1 node for classification output
   output = Dense(1, activation='sigmoid')(x)
-  model = Model(input=input, output=output)
+  model = Model(inputs=input, outputs=output)
   return model
