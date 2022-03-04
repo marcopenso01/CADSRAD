@@ -240,7 +240,8 @@ def iterate_minibatches(images, labels, batch_size, augment_batch=False, expand_
             continue
         batch_indices = np.sort(random_indices[b_i:b_i+batch_size])
         X = images[batch_indices, ...]
-
+        y = labels[batch_indices, ...]
+        
         if augment_batch:
             X = augmentation_function(X)
         if expand_dims:        
