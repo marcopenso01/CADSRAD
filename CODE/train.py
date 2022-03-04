@@ -452,8 +452,8 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
             no_improvement_counter = 0
             print('val_loss improved from %.3f to %.3f, saving model to weights-improvement' % (best_val_loss, val_hist[0]))
             best_val_loss = val_hist[0]
-            #model.save(os.path.join(log_dir, 'model_weights.h5'))
-            model.save_weights(os.path.join(out_fold, 'model_weights.h5'))
+            model.save(os.path.join(out_fold, 'model_weights.h5'))
+            #model.save_weights(os.path.join(out_fold, 'model_weights.h5'))
         else:
             no_improvement_counter += 1
             print('val_loss did not improve for %d epochs' % no_improvement_counter)
