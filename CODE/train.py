@@ -11,6 +11,7 @@ import skimage.io as io
 import skimage.transform as trans
 from skimage import exposure
 from matplotlib import pyplot as plt
+import pandas as pd
 from scipy import ndimage
 import tensorflow as tf
 from tensorflow.keras import backend as K
@@ -568,3 +569,4 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     df1 = pd.DataFrame({'labl': test_cad, 'pred': prediction})
     df1.to_excel(os.path.join(out_fold, 'Excel_df1.xlsx'))
     
+    k_fold +=1
