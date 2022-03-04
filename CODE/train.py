@@ -250,7 +250,7 @@ def iterate_minibatches(images, labels, batch_size, augment_batch=False, expand_
         yield X, y
         
 
-def do_eval(images, labels, batch_size, expand_dims=True):                           
+def do_eval(images, labels, batch_size, augment_batch=False, expand_dims=True):                           
     '''
     Function for running the evaluations on the validation sets.  
     :param images: A numpy array containing the images
@@ -264,8 +264,9 @@ def do_eval(images, labels, batch_size, expand_dims=True):
     for batch in iterate_minibatches(images, 
                                      labels,
                                      batch_size,
-                                     expand_dims,
-                                     augment_batch = False):
+                                     augment_batch,
+                                     expand_dims):
+        
         x, y = batch
         if y.shape[0] < batch_size:
             continue
@@ -437,6 +438,7 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
         print('Validation data Eval')
         val_hist = do_eval(val_img, val_cad,
                            batch_size=batch_size,
+                           augment_batch=False,
                            expand_dims=True)
         
         if val_history == {}:
