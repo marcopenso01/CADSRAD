@@ -261,8 +261,8 @@ def do_eval(images, labels, batch_size, expand_dims=True):
     for batch in iterate_minibatches(images, 
                                      labels,
                                      batch_size,
-                                     augment_batch = False
-                                     expand_dims):
+                                     expand_dims,
+                                     augment_batch = False):
         x, y = batch
         if y.shape[0] < batch_size:
             continue
