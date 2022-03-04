@@ -424,9 +424,9 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
         
         print('Training data Eval')
         print('%s: %.3f, %s: %.3f, %s: %.3f' % 
-              (model.metrics_names[0], +': %.3f', temp_hist[model.metrics_names[0]],
-               model.metrics_names[1], +': %.3f', temp_hist[model.metrics_names[1]],
-               model.metrics_names[2], +': %.3f', temp_hist[model.metrics_names[2]]))
+              (model.metrics_names[0], temp_hist[model.metrics_names[0]],
+               model.metrics_names[1], temp_hist[model.metrics_names[1]],
+               model.metrics_names[2], temp_hist[model.metrics_names[2]]))
         
         if train_history == {}:
             for m_i in range(len(model.metrics_names)):
