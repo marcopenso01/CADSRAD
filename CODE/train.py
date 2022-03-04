@@ -12,6 +12,7 @@ import skimage.transform as trans
 from skimage import exposure
 from matplotlib import pyplot as plt
 import pandas as pd
+import cv2
 from scipy import ndimage
 import tensorflow as tf
 from tensorflow.keras import backend as K
