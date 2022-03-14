@@ -11,17 +11,23 @@ import skimage.io as io
 import skimage.transform as trans
 from skimage import exposure
 from matplotlib import pyplot as plt
-import pandas as pd
-import cv2
 from scipy import ndimage
+import cv2
 import tensorflow as tf
 from tensorflow.keras import backend as K
 from tensorflow.keras.utils import plot_model
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam, SGD
 import logging
 import random
 from sklearn.utils import shuffle
 from sklearn import metrics
+from packaging import version
+from tensorflow.python.client import device_lib
+import pandas as pd
+from sklearn.utils import class_weight
+from sklearn.externals._packaging.version import PrePostDevType
+from scipy import stats
+
 import model_zoo as model_zoo
 from packaging import version
 from tensorflow.python.client import device_lib
@@ -98,12 +104,14 @@ def train_test_split(img_data, cad_data, paz_data, ramo_data):
     test_img = []
     test_cad = []
     test_ramo = []
+    test_pt = []
     
     for i in range(len(paz_data)):
         if i in coor_test:
             test_img.append(img_data[i])
             test_cad.append(cad_data[i])
             test_ramo.append(ramo_data[i])
+            test_pt.append(paz_data[i])
         else:
             tr_img.append(img_data[i])
             tr_cad.append(cad_data[i])
@@ -117,6 +125,7 @@ def train_test_split(img_data, cad_data, paz_data, ramo_data):
     test_img = np.asarray(test_img)
     test_cad = np.asarray(test_cad)
     test_ramo = np.asarray(test_ramo)
+    test_pt = np.asarray(test_pt)
     
     coor_test = []
     #validatio-train
@@ -160,7 +169,7 @@ def train_test_split(img_data, cad_data, paz_data, ramo_data):
     tr_paz = []
     tr_ramo = []
     
-    yield train_img, train_cad, train_ramo, test_img, test_cad, test_ramo, val_img, val_cad, val_ramo
+    yield train_img, train_cad, train_ramo, test_img, test_cad, test_ramo, val_img, val_cad, val_ramo, test_pt
   
 
 def zoom(img, zoom_factor):
@@ -241,7 +250,7 @@ def iterate_minibatches(images, labels, batch_size, augment_batch=False, expand_
         batch_indices = np.sort(random_indices[b_i:b_i+batch_size])
         X = images[batch_indices, ...]
         y = labels[batch_indices, ...]
-        
+
         if augment_batch:
             X = augmentation_function(X)
         if expand_dims:        
@@ -266,7 +275,6 @@ def do_eval(images, labels, batch_size, augment_batch=False, expand_dims=True):
                                      batch_size,
                                      augment_batch,
                                      expand_dims):
-        
         x, y = batch
         if y.shape[0] < batch_size:
             continue
@@ -316,8 +324,8 @@ def adjusted_classes(y_scores, t):
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 PATH
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-input_folder = '......'
-output_folder = '......'
+input_folder = '/content/drive/MyDrive/CADRADS2/dati'
+output_folder = '/content/drive/MyDrive/CADRADS2/ex6'
 
 if not os.path.exists(input_folder):
   raise TypeError('no input path found %s' % input_folder)
@@ -335,19 +343,36 @@ paz_data = file['paz'][()]
 ramo_data = file['ramo'][()]
 file.close()
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+NORMALIZATION
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+'''
+for n in range(len(img_data)):
+    for ch in range(img_data[n].shape[-1]):
+        img_data[n][:,:,ch] = standardize_image(img_data[n][:,:,ch])
+'''
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 HYPERPARAMETERS
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-batch_size = 2
-epochs = 100
-curr_lr = 1e-3
+batch_size = 4
+epochs = 200
+curr_lr = 1e-4
 input_size = img_data[0].shape
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 TRAINING 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+PPV = []
+NPV = []
+ACC = []
+BACC = []
+RECALL = []
+AUC = []
+FPR = []
+TPR = []
+
 #itero su k-fold
 k_fold = 0
 for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
-    train_img, train_cad, train_ramo, test_img, test_cad, test_ramo, val_img, val_cad, val_ramo = data
+    train_img, train_cad, train_ramo, test_img, test_cad, test_ramo, val_img, val_cad, val_ramo, test_paz = data
     print('-' * 70)
     print('---- Starting fold %d ----'% k_fold)
     print('-' * 70)
@@ -355,10 +380,15 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     #set classes: cad0-2 vs cad 3-5
     train_cad[train_cad<3]=0
     train_cad[train_cad>0]=1
-    test_cad[test_cad<3]=0
-    test_cad[test_cad>0]=1
     val_cad[val_cad<3]=0
     val_cad[val_cad>0]=1
+
+    #set weights classes
+    #class_weights = class_weight.compute_class_weight(class_weight='balanced',classes=np.unique(train_cad),y=train_cad)
+    #class_weights = dict(zip(np.unique(train_cad), class_weights))
+
+    #class_weight = {0: 0.3,
+    #                1: 0.7}
     
     out_fold = os.path.join(output_folder, 'fold'+str(k_fold))
     if not os.path.exists(out_fold):
@@ -370,7 +400,9 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
             text_file.write('----------------------------------------------------------------------------\n\n')
     
     print('Training data', train_img.shape, train_img[0].dtype)
+    print_txt(out_fold, ['\nTraining data %d' % len(train_img)])
     print('Validation data', val_img.shape, val_img[0].dtype)
+    print_txt(out_fold, ['\nValidation data %d' % len(val_img)])
     
     print('\nCreating and compiling model...')
     model = model_zoo.model1(input_size = input_size)
@@ -379,9 +411,10 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
         # Pass the file handle in as a lambda function to make it callable
         model.summary(print_fn=lambda x: text_file.write(x + '\n'))
     
-    opt = Adam(learning_rate=curr_lr)
+    #opt = Adam(learning_rate=curr_lr)
+    opt = SGD(learning_rate=curr_lr, momentum=0.9)
     model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy',
-                                                                      get_f1])
+                                                                      tf.keras.metrics.AUC()])
     print('Model prepared...')
     print('Start training...')
     
@@ -404,8 +437,9 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
                 step += 1
                 continue
             
+            #hist = model.train_on_batch(x,y, class_weight=class_weights)
             hist = model.train_on_batch(x,y)
-            
+
             if temp_hist == {}:
                 for m_i in range(len(model.metrics_names)):
                     temp_hist[model.metrics_names[m_i]] = []
@@ -459,13 +493,15 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
             print('val_loss did not improve for %d epochs' % no_improvement_counter)
         
         #ReduceLROnPlateau
-        if no_improvement_counter % 5 == 0:
-            curr_lr = curr_lr * 0.1
+        if no_improvement_counter % 6 == 0 and no_improvement_counter != 0:
+            old_lr = curr_lr
+            curr_lr = curr_lr * 0.2
+            if curr_lr < 1e-6:
+                curr_lr = 1e-4
             K.set_value(model.optimizer.learning_rate, curr_lr)
-            print('Learning rate changed from %.6f to %.6f' % (curr_lr*10, curr_lr))
-            
+            print('Learning rate changed from %.6f to %.6f' % (old_lr, curr_lr))
         #EarlyStopping
-        if no_improvement_counter > 15:  # Early stop if val loss does not improve after n epochs
+        if no_improvement_counter > 30:  # Early stop if val loss does not improve after n epochs
             print('Early stop at epoch %d' % (epoch+1))
             break
 
@@ -496,6 +532,12 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     print('-' * 50)
     print('Testing data', test_img.shape, test_img[0].dtype)
     print_txt(out_fold, ['\nTesting data %d' % len(test_img)])
+    print_txt(out_fold, ['\nTest patients %s' % test_paz])
+    print_txt(out_fold, ['\nTest CAD class %s' % test_cad])
+    cad_class = np.copy(test_cad)
+    test_cad[test_cad<3]=0
+    test_cad[test_cad>0]=1
+    print_txt(out_fold, ['\nTest binary CAD class %s' % test_cad])
     print('Loading saved weights...')
     model = tf.keras.models.load_model(os.path.join(out_fold, 'model_weights.h5'))
     print('Predicting...')
@@ -563,14 +605,122 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     print_txt(out_fold, ['\nAcc: %.2f' % ((TP+TN)/(TN+FN+TP+FP))])
     print_txt(out_fold, ['\nBalanced_Acc: %.2f\n' % metrics.balanced_accuracy_score(test_cad, pred_adj)])
 
+    PPV.append(prec)
+    NPV.append((TN / (FN + TN)))
+    ACC.append(((TP+TN)/(TN+FN+TP+FP)))
+    BACC.append(metrics.balanced_accuracy_score(test_cad, pred_adj))
+    RECALL.append(rec)
+    AUC.append(aucc)
+    FPR.append(fpr)
+    TPR.append(tpr)
+
     with open(out_file, "a") as text_file:
         text_file.write('\n----- Prediction ----- \n')
-        text_file.write('real_class       probability\n')
+        text_file.write('real_class       probability        paz       ramo\n')
         for ii in range(len(prediction)):
             text_file.write(
-                '%d                %.3f\n' % (test_cad[ii], prediction[ii]))
+                '%d                %.3f                 %d                %d\n' % (test_cad[ii], prediction[ii], test_paz[ii], test_ramo[ii]))
 
-    df1 = pd.DataFrame({'labl': test_cad, 'pred': prediction})
+    df1 = pd.DataFrame({'labl': test_cad, 'pred': prediction[:,0], 'paz': test_paz, 'ramo': test_ramo})
     df1.to_excel(os.path.join(out_fold, 'Excel_df1.xlsx'))
-    
+
+    #for patient
+    with open(out_file, "a") as text_file:
+        text_file.write('\n\n----- for patient ----- \n')
+    true = []
+    pred = []
+    for c in np.unique(cad_class):
+        for p in np.unique(test_paz):
+            if len(np.where((test_paz==p) & (cad_class==c))[0][:]) != 0 :
+                true.append(test_cad[np.where((test_paz==p) & (cad_class==c))[0][0]])
+                flag=0
+                for ii in range(len(np.where((test_paz==p) & (cad_class==c))[0])):
+                    if pred_adj[np.where((test_paz==p) & (cad_class==c))[0][ii]] == 1:
+                        flag=1
+                if flag:
+                    pred.append(1)
+                else:
+                    pred.append(0)
+      
+    true = np.asarray(true)
+    pred = np.asarray(pred)
+    CM = metrics.confusion_matrix(true, pred)
+    TN = CM[0][0]
+    print_txt(out_fold, ['\ntrue negative: %d' % TN])
+    FN = CM[1][0]
+    print_txt(out_fold, ['\nfalse negative: %d' % FN])
+    TP = CM[1][1]
+    print_txt(out_fold, ['\ntrue positive: %d' % TP])
+    FP = CM[0][1]
+    print_txt(out_fold, ['\nfalse positive: %d' % FP])
+    prec = TP / (TP + FP)
+    print_txt(out_fold, ['\nPrecision or Pos predictive value: %.2f' % prec])
+    rec = TP / (TP + FN)
+    print_txt(out_fold, ['\nRecall: %.2f' % rec])
+    print_txt(out_fold, ['\nSpecificity: %.2f' % (TN / (TN + FP))])
+    print_txt(out_fold, ['\nNeg predictive value: %.2f' % (TN / (FN + TN))])
+    print_txt(out_fold, ['\nF1: %.2f' % (2*(prec*rec)/(prec+rec))])
+    print_txt(out_fold, ['\nAcc: %.2f' % ((TP+TN)/(TN+FN+TP+FP))])
+    print_txt(out_fold, ['\nBalanced_Acc: %.2f\n' % metrics.balanced_accuracy_score(true, pred)])
+
     k_fold +=1
+
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+EVALUATE MEAN PERFORMANCE
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+mean_ppv = np.mean(PPV)
+mean_npv = np.mean(NPV)
+mean_acc = np.mean(ACC)
+mean_bacc = np.mean(BACC)
+mean_rec = np.mean(RECALL)
+mean_auc = np.mean(AUC)
+std_ppv = np.std(PPV, ddof=1)
+std_npv = np.std(NPV, ddof=1)
+std_acc = np.std(ACC, ddof=1)
+std_bacc = np.std(BACC, ddof=1)
+std_rec = np.std(RECALL, ddof=1)
+std_auc = np.std(AUC, ddof=1)
+
+#formula is true for sample <30. In this case sample = 5
+infer_ppv = round(mean_ppv - (round(stats.t.ppf(1-0.025, len(PPV)-1),3) * std_ppv / np.sqrt(len(PPV))),4)
+upper_ppv = round(mean_ppv + (round(stats.t.ppf(1-0.025, len(PPV)-1),3) * std_ppv / np.sqrt(len(PPV))),4)
+infer_npv = round(mean_npv - (round(stats.t.ppf(1-0.025, len(NPV)-1),3) * std_npv / np.sqrt(len(NPV))),4)
+upper_npv = round(mean_npv + (round(stats.t.ppf(1-0.025, len(NPV)-1),3) * std_npv / np.sqrt(len(NPV))),4)
+infer_acc = round(mean_acc - (round(stats.t.ppf(1-0.025, len(ACC)-1),3) * std_acc / np.sqrt(len(ACC))),4)
+upper_acc = round(mean_acc + (round(stats.t.ppf(1-0.025, len(ACC)-1),3) * std_acc / np.sqrt(len(ACC))),4)
+infer_bacc = round(mean_bacc - (round(stats.t.ppf(1-0.025, len(BACC)-1),3) * std_bacc / np.sqrt(len(BACC))),4)
+upper_bacc = round(mean_bacc + (round(stats.t.ppf(1-0.025, len(BACC)-1),3) * std_bacc / np.sqrt(len(BACC))),4)
+infer_rec = round(mean_rec - (round(stats.t.ppf(1-0.025, len(RECALL)-1),3) * std_rec / np.sqrt(len(RECALL))),4)
+upper_rec = round(mean_rec + (round(stats.t.ppf(1-0.025, len(RECALL)-1),3) * std_rec / np.sqrt(len(RECALL))),4)
+infer_auc = round(mean_auc - (round(stats.t.ppf(1-0.025, len(AUC)-1),3) * std_auc / np.sqrt(len(AUC))),4)
+upper_auc = round(mean_auc + (round(stats.t.ppf(1-0.025, len(AUC)-1),3) * std_auc / np.sqrt(len(AUC))),4)
+
+print("Mean PPV = %0.2f (CI %0.2f-%0.2f)" % (mean_ppv,infer_ppv,upper_ppv))
+print("Mean NPV = %0.2f (CI %0.2f-%0.2f)" % (mean_npv,infer_npv,upper_npv))
+print("Mean ACC = %0.2f (CI %0.2f-%0.2f)" % (mean_acc,infer_acc,upper_acc))
+print("Mean BACC = %0.2f (CI %0.2f-%0.2f)" % (mean_bacc,infer_bacc,upper_bacc))
+print("Mean RECALL = %0.2f (CI %0.2f-%0.2f)" % (mean_rec,infer_rec,upper_rec))
+print("Mean AUC = %0.2f (CI %0.2f-%0.2f)" % (mean_auc,infer_auc,upper_auc))
+
+out_file = os.path.join(output_folder, 'summary_report.txt')
+print_txt(output_folder, ['\nMean PPV = %0.2f (CI %0.2f-%0.2f)' % (mean_ppv,infer_ppv,upper_ppv)])
+print_txt(output_folder, ['\nMean NPV = %0.2f (CI %0.2f-%0.2f)' % (mean_npv,infer_npv,upper_npv)])
+print_txt(output_folder, ['\nMean ACC = %0.2f (CI %0.2f-%0.2f)' % (mean_acc,infer_acc,upper_acc)])
+print_txt(output_folder, ['\nMean BACC = %0.2f (CI %0.2f-%0.2f)' % (mean_bacc,infer_bacc,upper_bacc)])
+print_txt(output_folder, ['\nMean RECALL = %0.2f (CI %0.2f-%0.2f)' % (mean_rec,infer_rec,upper_rec)])
+print_txt(output_folder, ['\nMean AUC = %0.2f (CI %0.2f-%0.2f)' % (mean_auc,infer_auc,upper_auc)])
+
+plt.plot([0,1], [0,1], linestyle='--', lw=2, color="r", alpha=0.8)
+plt.plot(FPR[0], TPR[0], lw=2, alpha=0.5, label="ROC fold 0 (AUC = %0.2f)" % AUC[0])
+plt.plot(FPR[1], TPR[1], lw=2, alpha=0.5, label="ROC fold 1 (AUC = %0.2f)" % AUC[1])
+plt.plot(FPR[2], TPR[2], lw=2, alpha=0.5, label="ROC fold 2 (AUC = %0.2f)" % AUC[2])
+plt.plot(FPR[3], TPR[3], lw=2, alpha=0.5, label="ROC fold 3 (AUC = %0.2f)" % AUC[3])
+plt.plot(FPR[4], TPR[4], lw=2, alpha=0.5, label="ROC fold 4 (AUC = %0.2f)" % AUC[4])
+plt.plot([], [], ' ', label="Mean AUC = %0.2f (CI %0.2f-%0.2f)" % (mean_auc,infer_auc,upper_auc))
+plt.legend()
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic')
+plt.savefig(os.path.join(output_folder, 'CV_AUC'), dpi=1200)
+plt.close()
