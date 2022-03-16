@@ -47,38 +47,37 @@ def model1(input_size = (256,256,3)):
   return model
 
 
+
 def model2(input_size = (256,256,3)):
   input = Input(input_size)
-  x = Conv2D(64, kernel_size=(7, 7), padding='valid', kernel_initializer='he_normal', strides=(2,2))(input)
+  x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(input)
   x = BatchNormalization()(x)
   x = Activation('relu')(x)
-  x = channel_spatial_squeeze_excite(x, ratio=16)
-
-  x = Conv2D(48, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = Conv2D(48, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = MaxPooling2D(pool_size=(2, 2))(x)
-    
-  x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
+  x = spatial_attention(x)
   x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
   x = BatchNormalization()(x)
   x = Activation('relu')(x)
   x = MaxPooling2D(pool_size=(2, 2))(x)
   
-  x = Flatten()(x)
-  x = Dense(64, kernel_initializer='he_normal')(x)
+  x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
   x = BatchNormalization()(x)
   x = Activation('relu')(x)
-  x = Dropout(0.3)(x)
-  x = Dense(32, kernel_initializer='he_normal')(x)
+  x = spatial_attention(x)
+  x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
   x = BatchNormalization()(x)
   x = Activation('relu')(x)
-  x = Dropout(0.3)(x)
+  x = MaxPooling2D(pool_size=(2, 2))(x)
+  
+  x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+  x = BatchNormalization()(x)
+  x = Activation('relu')(x)
+  x = spatial_attention(x)
+  x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+  x = BatchNormalization()(x)
+  x = Activation('relu')(x)
+  x = MaxPooling2D(pool_size=(2, 2))(x)
+  
+  x = GlobalAveragePooling2D()(x)
   # Add a final sigmoid layer with 1 node for classification output
   output = Dense(1, activation='sigmoid')(x)
   model = Model(inputs=input, outputs=output)
