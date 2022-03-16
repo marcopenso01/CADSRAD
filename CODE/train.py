@@ -325,7 +325,7 @@ def adjusted_classes(y_scores, t):
 PATH
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 input_folder = '/content/drive/MyDrive/CADRADS2/dati'
-output_folder = '/content/drive/MyDrive/CADRADS2/ex6'
+output_folder = '/content/drive/MyDrive/CADRADS2/ex8'
 
 if not os.path.exists(input_folder):
   raise TypeError('no input path found %s' % input_folder)
@@ -345,11 +345,8 @@ file.close()
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 NORMALIZATION
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-'''
-for n in range(len(img_data)):
-    for ch in range(img_data[n].shape[-1]):
-        img_data[n][:,:,ch] = standardize_image(img_data[n][:,:,ch])
-'''
+img_data = np.float32(img_data)
+img_data = img_data/255.0
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 HYPERPARAMETERS
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -404,8 +401,9 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     print('Validation data', val_img.shape, val_img[0].dtype)
     print_txt(out_fold, ['\nValidation data %d' % len(val_img)])
     
+    # --------- MODEL ---------
     print('\nCreating and compiling model...')
-    model = model_zoo.model1(input_size = input_size)
+    model = model2(input_size = input_size)
     
     with open(out_file, "a") as text_file:
         # Pass the file handle in as a lambda function to make it callable
