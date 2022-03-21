@@ -144,32 +144,38 @@ def train_test_split(img_data, cad_data, paz_data, ramo_data):
     val_img = []
     val_cad = []
     val_ramo = []
+    val_pt = []
     train_img = []
     train_cad = []
     train_ramo = []
+    train_pt = []
     
     for i in range(len(tr_paz)):
         if i in coor_test:
             val_img.append(tr_img[i])
             val_cad.append(tr_cad[i])
             val_ramo.append(tr_ramo[i])
+            val_pt.append(tr_paz[i])
         else:
             train_img.append(tr_img[i])
             train_cad.append(tr_cad[i])
             train_ramo.append(tr_ramo[i])
+            train_pt.append(tr_paz[i])
     
     train_img = np.asarray(train_img)
     train_cad = np.asarray(train_cad)
     train_ramo = np.asarray(train_ramo)
+    train_pt = np.asarray(train_pt)
     val_img = np.asarray(val_img)
     val_cad = np.asarray(val_cad)
     val_ramo = np.asarray(val_ramo)
+    val_pt = np.asarray(val_pt)
     tr_img = []
     tr_cad = []
     tr_paz = []
     tr_ramo = []
     
-    yield train_img, train_cad, train_ramo, test_img, test_cad, test_ramo, val_img, val_cad, val_ramo, test_pt
+    yield train_img, train_cad, train_ramo, test_img, test_cad, test_ramo, val_img, val_cad, val_ramo, train_pt, val_pt, test_pt
   
 
 def zoom(img, zoom_factor):
@@ -319,6 +325,7 @@ def adjusted_classes(y_scores, t):
     Will only work for binary classification problems.
     """
     return [1 if y >= t else 0 for y in y_scores]
+
 
 def plot_confusion_matrix(cm,
                           target_names,
