@@ -83,6 +83,39 @@ def model2(input_size = (256,256,3)):
   model = Model(inputs=input, outputs=output)
   return model
 
+def model3(input_size = (256,256,3)):
+  input = Input(input_size)
+  x = Conv2D(48, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(input)
+  x = BatchNormalization()(x)
+  x = Activation('relu')(x)
+  x = Conv2D(48, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(input)
+  x = BatchNormalization()(x)
+  x = Activation('relu')(x)
+  x = MaxPooling2D(pool_size=(2, 2))(x)
+  
+  x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+  x = BatchNormalization()(x)
+  x = Activation('relu')(x)
+  x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+  x = BatchNormalization()(x)
+  x = Activation('relu')(x)
+  x = MaxPooling2D(pool_size=(2, 2))(x)
+  
+  x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+  x = BatchNormalization()(x)
+  x = Activation('relu')(x)
+  x = channel_spatial_squeeze_excite(x, ratio=16)
+  x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+  x = BatchNormalization()(x)
+  x = Activation('relu')(x)
+  x = MaxPooling2D(pool_size=(2, 2))(x)
+  
+  x = GlobalAveragePooling2D()(x)
+  # Add a final sigmoid layer with 1 node for classification output
+  output = Dense(3, activation='softmax')(x)
+  model = Model(inputs=input, outputs=output)
+  return model
+
 
 def se_block(input_tensor, ratio=16):
     """ Create a channel-wise squeeze-excite block
