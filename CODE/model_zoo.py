@@ -10,111 +10,95 @@ from tensorflow.keras import backend as K
 
 import os
 
-def model1(input_size = (256,256,3)):
-  input = Input(input_size)
-  x = Conv2D(48, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(input)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = selective_kernel_block(x)
-  x = MaxPooling2D(pool_size=(2, 2))(x)
-  
-  x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = selective_kernel_block(x)
-  x = MaxPooling2D(pool_size=(2, 2))(x)
-  
-  x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = MaxPooling2D(pool_size=(2, 2))(x)
-  
-  x = Flatten()(x)
-  x = Dense(96, kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = Dropout(0.3)(x)
-  x = Dense(32, kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = Dropout(0.3)(x)
-  # Add a final sigmoid layer with 1 node for classification output
-  output = Dense(1, activation='sigmoid')(x)
-  model = Model(inputs=input, outputs=output)
-  return model
+
+def model1(input_size=(256, 256, 3)):
+    input = Input(input_size)
+    x = naive_inception_module(input, 64)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+
+    x = Conv2D(96, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Conv2D(96, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+
+    x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+
+    x = GlobalAveragePooling2D()(x)
+    # Add a final sigmoid layer with 1 node for classification output
+    output = Dense(1, activation='sigmoid')(x)
+    model = Model(inputs=input, outputs=output)
+    return model
 
 
+def model2(input_size=(256, 256, 3)):
+    input = Input(input_size)
+    x = naive_inception_module(input, 48)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Conv2D(48, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
 
-def model2(input_size = (256,256,3)):
-  input = Input(input_size)
-  x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(input)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = spatial_attention(x)
-  x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = MaxPooling2D(pool_size=(2, 2))(x)
-  
-  x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = spatial_attention(x)
-  x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = MaxPooling2D(pool_size=(2, 2))(x)
-  
-  x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = spatial_attention(x)
-  x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = MaxPooling2D(pool_size=(2, 2))(x)
-  
-  x = GlobalAveragePooling2D()(x)
-  # Add a final sigmoid layer with 1 node for classification output
-  output = Dense(1, activation='sigmoid')(x)
-  model = Model(inputs=input, outputs=output)
-  return model
+    x = residual_block(x, 64)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
 
-def model3(input_size = (256,256,3)):
-  input = Input(input_size)
-  x = Conv2D(48, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(input)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = Conv2D(48, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(input)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = MaxPooling2D(pool_size=(2, 2))(x)
-  
-  x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = MaxPooling2D(pool_size=(2, 2))(x)
-  
-  x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = channel_spatial_squeeze_excite(x, ratio=16)
-  x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-  x = BatchNormalization()(x)
-  x = Activation('relu')(x)
-  x = MaxPooling2D(pool_size=(2, 2))(x)
-  
-  x = GlobalAveragePooling2D()(x)
-  # Add a final sigmoid layer with 1 node for classification output
-  output = Dense(3, activation='softmax')(x)
-  model = Model(inputs=input, outputs=output)
-  return model
+    x = residual_block(x, 92)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+
+    x = GlobalAveragePooling2D()(x)
+    # Add a final sigmoid layer with 1 node for classification output
+    output = Dense(1, activation='sigmoid')(x)
+    model = Model(inputs=input, outputs=output)
+    return model
+
+
+def model3(input_size=(256, 256, 3)):
+    input = Input(input_size)
+    x = Conv2D(48, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(input)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Conv2D(48, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+
+    x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+
+    x = Conv2D(92, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = spatial_attention(x)
+    x = Conv2D(92, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+
+    x = GlobalAveragePooling2D()(x)
+    # Add a final sigmoid layer with 1 node for classification output
+    output = Dense(3, activation='softmax')(x)
+    model = Model(inputs=input, outputs=output)
+    return model
 
 
 def se_block(input_tensor, ratio=16):
@@ -144,7 +128,7 @@ def spatial_attention(input_tensor):
     References
     -   [Concurrent Spatial and Channel Squeeze & Excitation in Fully Convolutional Networks](https://arxiv.org/abs/1803.02579)
     """
-    
+
     se = Conv2D(1, (1, 1), activation='sigmoid', use_bias=False,
                 kernel_initializer='he_normal')(input_tensor)
 
@@ -169,14 +153,15 @@ def channel_spatial_squeeze_excite(input_tensor, ratio=16):
     x = add([cse, sse])
     return x
 
+
 def selective_kernel_block(input_tensor):
     channel = input_tensor.get_shape().as_list()[-1]
     d = int(channel / 2)
     init = input_tensor
     xs = []
-    M=3
+    M = 3
     for i in range(M):
-        net = Conv2D(channel, (3,3), padding="SAME", dilation_rate=((i*i)+1, (i*i)+1),
+        net = Conv2D(channel, (3, 3), padding="SAME", dilation_rate=((i * i) + 1, (i * i) + 1),
                      kernel_initializer='he_normal', use_bias=False)(init)
         net = BatchNormalization()(net)
         net = Activation('relu')(net)
@@ -194,7 +179,7 @@ def selective_kernel_block(input_tensor):
     att_vec = []
 
     for i in range(M):
-        fcs = Dense(channel,kernel_initializer='he_normal', use_bias=False)(fc)
+        fcs = Dense(channel, kernel_initializer='he_normal', use_bias=False)(fc)
         fcs = Activation('softmax')(fcs)
         fea_v = multiply([fcs, xs[i]])
 
@@ -205,3 +190,26 @@ def selective_kernel_block(input_tensor):
         else:
             y = add([y, att_vec[i]])
     return y
+
+
+def naive_inception_module(layer_in, f1):
+    conv1 = Conv2D(f1, (3, 3), padding='same', activation='relu')(layer_in)
+
+    conv2 = Conv2D(f1, (3, 3), padding='same', activation='relu')(layer_in)
+    conv2 = Conv2D(f1, (3, 3), padding='same', activation='relu')(conv2)
+
+    # concatenate filters, assumes filters/channels last
+    layer_out = Concatenate(axis=1)([conv1, conv2])
+    return layer_out
+
+def residual_block(layer_in, f):
+    y = layer_in
+    x = Conv2D(f, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(layer_in)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Conv2D(f, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = BatchNormalization()(x)
+    y = Conv2D(f, kernel_size=(1, 1), padding="same", kernel_initializer='he_normal')(y)
+    x = add([x, y])
+    x = Activation('relu')(x)
+    return x
