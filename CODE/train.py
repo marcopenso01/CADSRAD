@@ -327,7 +327,7 @@ def adjusted_classes(y_scores, t):
 PATH
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 input_folder = 'D:\CADSRAD-main\data'
-output_folder = 'D:\CADSRAD-main\output\cad0_2\ex13'
+output_folder = 'D:\CADSRAD-main\output\cad3_5\ex7'
 
 if not os.path.exists(input_folder):
     raise TypeError('no input path found %s' % input_folder)
@@ -345,10 +345,17 @@ paz_data = file['paz'][()]
 ramo_data = file['ramo'][()]
 file.close()
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+ENHANCEMENT
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+clahe = cv2.createCLAHE(clipLimit=1.5)
+for pp in range(len(img_data)):
+    for kk in range(4):
+        img_data[pp,:,:,kk] = clahe.apply(img_data[pp,:,:,kk])
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 NORMALIZATION
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 img_data = np.float32(img_data)
-img_data = img_data/255.0
+img_data = img_data / 255.0
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 HYPERPARAMETERS
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -383,6 +390,7 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     val_cad[val_cad < 3] = 0
     val_cad[val_cad > 0] = 1
     '''
+    '''
     # set classes: cad0 vs cad1-2
     train_img = train_img[np.where(train_cad < 3)[0][0]:np.where(train_cad < 3)[0][-1] + 1]
     train_ramo = train_ramo[np.where(train_cad < 3)[0][0]:np.where(train_cad < 3)[0][-1] + 1]
@@ -396,9 +404,30 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     test_ramo = test_ramo[np.where(test_cad < 3)[0][0]:np.where(test_cad < 3)[0][-1] + 1]
     test_paz = test_paz[np.where(test_cad < 3)[0][0]:np.where(test_cad < 3)[0][-1] + 1]
     test_cad = test_cad[np.where(test_cad < 3)[0][0]:np.where(test_cad < 3)[0][-1] + 1]
-
     train_cad[train_cad > 0] = 1
     val_cad[val_cad > 0] = 1
+    '''
+
+    # set classes: cad3-4 vs cad5
+    print(val_cad)
+    train_img = train_img[np.where(train_cad > 2)[0][0]:np.where(train_cad > 2)[0][-1] + 1]
+    train_ramo = train_ramo[np.where(train_cad > 2)[0][0]:np.where(train_cad > 2)[0][-1] + 1]
+    train_paz = train_paz[np.where(train_cad > 2)[0][0]:np.where(train_cad > 2)[0][-1] + 1]
+    train_cad = train_cad[np.where(train_cad > 2)[0][0]:np.where(train_cad > 2)[0][-1] + 1]
+    val_img = val_img[np.where(val_cad > 2)[0][0]:np.where(val_cad > 2)[0][-1] + 1]
+    val_ramo = val_ramo[np.where(val_cad > 2)[0][0]:np.where(val_cad > 2)[0][-1] + 1]
+    val_paz = val_paz[np.where(val_cad > 2)[0][0]:np.where(val_cad > 2)[0][-1] + 1]
+    val_cad = val_cad[np.where(val_cad > 2)[0][0]:np.where(val_cad > 2)[0][-1] + 1]
+    test_img = test_img[np.where(test_cad > 2)[0][0]:np.where(test_cad > 2)[0][-1] + 1]
+    test_ramo = test_ramo[np.where(test_cad > 2)[0][0]:np.where(test_cad > 2)[0][-1] + 1]
+    test_paz = test_paz[np.where(test_cad > 2)[0][0]:np.where(test_cad > 2)[0][-1] + 1]
+    test_cad = test_cad[np.where(test_cad > 2)[0][0]:np.where(test_cad > 2)[0][-1] + 1]
+    train_cad[train_cad <= 4] = 0
+    val_cad[val_cad <= 4] = 0
+    train_cad[train_cad == 5] = 1
+    val_cad[val_cad == 5] = 1
+    print(val_cad)
+
 
     # set weights classes
     # class_weights = class_weight.compute_class_weight(class_weight='balanced',classes=np.unique(train_cad),y=train_cad)
@@ -421,8 +450,11 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     print('Validation data', val_img.shape, val_img[0].dtype)
     print_txt(out_fold, ['\nValidation data %d' % len(val_img)])
 
+    """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    MODEL
+    """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     print('\nCreating and compiling model...')
-    model = model_zoo.model1(input_size=input_size)
+    model = model_zoo.model2(input_size=input_size)
 
     with open(out_file, "a") as text_file:
         # Pass the file handle in as a lambda function to make it callable
@@ -499,7 +531,7 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
         if val_hist[0] < best_val_loss:
             no_improvement_counter = 0
             print('val_loss improved from %.3f to %.3f, saving model to weights-improvement' % (
-            best_val_loss, val_hist[0]))
+                best_val_loss, val_hist[0]))
             best_val_loss = val_hist[0]
             model.save(os.path.join(out_fold, 'model_weights.h5'))
             # model.save_weights(os.path.join(out_fold, 'model_weights.h5'))
@@ -552,7 +584,9 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     cad_class = np.copy(test_cad)
     #test_cad[test_cad < 3] = 0
     #test_cad[test_cad > 0] = 1
-    test_cad[test_cad > 0] = 1
+    test_cad[test_cad <= 4] = 0
+    test_cad[test_cad == 5] = 1
+    ''
     print_txt(out_fold, ['\nTest binary CAD class %s' % test_cad])
     print('Loading saved weights...')
     model = tf.keras.models.load_model(os.path.join(out_fold, 'model_weights.h5'))
@@ -636,7 +670,7 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
         for ii in range(len(prediction)):
             text_file.write(
                 '%d                %.3f                 %d                %d\n' % (
-                test_cad[ii], prediction[ii], test_paz[ii], test_ramo[ii]))
+                    test_cad[ii], prediction[ii], test_paz[ii], test_ramo[ii]))
 
     df1 = pd.DataFrame({'labl': test_cad, 'pred': prediction[:, 0], 'paz': test_paz, 'ramo': test_ramo})
     df1.to_excel(os.path.join(out_fold, 'Excel_df1.xlsx'))
