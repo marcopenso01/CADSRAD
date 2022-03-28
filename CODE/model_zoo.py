@@ -2,37 +2,29 @@ import tensorflow as tf
 
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, BatchNormalization, Concatenate, add
-from tensorflow.keras.layers import Conv2D, MaxPooling2D
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, DepthwiseConv2D
 from tensorflow.keras import Model, Input
 from tensorflow.keras import regularizers
 from tensorflow.keras.layers import GlobalAveragePooling2D, Reshape, multiply, Permute
 from tensorflow.keras import backend as K
+import numpy as np
 
 import os
 
 
 def model1(input_size=(256, 256, 3)):
     input = Input(input_size)
-    x = naive_inception_module(input, 64)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = Conv2D(64, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = Conv2D(48, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(input)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
-    x = Conv2D(96, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = Conv2D(96, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = Conv2D(68, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
-    x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = Conv2D(128, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = Conv2D(98, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = MaxPooling2D(pool_size=(2, 2))(x)
@@ -46,18 +38,15 @@ def model1(input_size=(256, 256, 3)):
 
 def model2(input_size=(256, 256, 3)):
     input = Input(input_size)
-    x = naive_inception_module(input, 48)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = Conv2D(48, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    x = Conv2D(40, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(input)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
-    x = residual_block(x, 64)
+    x = residual_block(x, 60)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
-    x = residual_block(x, 92)
+    x = residual_block(x, 80)
     x = MaxPooling2D(pool_size=(2, 2))(x)
 
     x = GlobalAveragePooling2D()(x)
@@ -100,6 +89,48 @@ def model3(input_size=(256, 256, 3)):
     model = Model(inputs=input, outputs=output)
     return model
 
+
+def model4(input_size=(256, 256, 3)):
+    """ConvMixer-256/8: https://openreview.net/pdf?id=TVHS5Y4dNvM.
+    The hyperparameter values are taken from the paper.
+    """
+    input = Input(input_size)
+    # Extract patch embeddings.
+    x = conv_stem(input, filters=48, patch_size=2)
+
+    # ConvMixer blocks.
+    for _ in range(8):
+        x = conv_mixer_block(x, filters=48, kernel_size=5)
+
+    # Classification block.
+    x = GlobalAveragePooling2D()(x)
+    output = Dense(1, activation='sigmoid')(x)
+    model = Model(inputs=input, outputs=output)
+    return model
+
+
+
+def custom_gelu(x):
+    return 0.5 * x * (1 + tf.tanh(tf.sqrt(2 / np.pi) * (x + 0.044715 * tf.pow(x, 3))))
+
+def activation_block(x):
+    x = custom_gelu(x)
+    return BatchNormalization()(x)
+
+def conv_stem(x, filters: int, patch_size: int):
+    x = Conv2D(filters, kernel_size=patch_size, strides=patch_size)(x)
+    return activation_block(x)
+
+def conv_mixer_block(x, filters: int, kernel_size: int):
+    # Depthwise convolution.
+    x0 = x
+    x = DepthwiseConv2D(kernel_size=kernel_size, padding="same")(x)
+    x = add([activation_block(x), x0])  # Residual.
+
+    # Pointwise convolution.
+    x = Conv2D(filters, kernel_size=1)(x)
+    x = activation_block(x)
+    return x
 
 def se_block(input_tensor, ratio=16):
     """ Create a channel-wise squeeze-excite block
@@ -206,9 +237,9 @@ def residual_block(layer_in, f):
     y = layer_in
     x = Conv2D(f, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(layer_in)
     x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = Conv2D(f, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
-    x = BatchNormalization()(x)
+    #x = Activation('relu')(x)
+    #x = Conv2D(f, kernel_size=(3, 3), padding="same", kernel_initializer='he_normal')(x)
+    #x = BatchNormalization()(x)
     y = Conv2D(f, kernel_size=(1, 1), padding="same", kernel_initializer='he_normal')(y)
     x = add([x, y])
     x = Activation('relu')(x)
