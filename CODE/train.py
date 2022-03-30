@@ -22,7 +22,7 @@ from sklearn import metrics
 import pandas as pd
 from sklearn.utils import class_weight
 from scipy import stats
-#import tensorflow_addons as tfa
+# import tensorflow_addons as tfa
 
 import model_zoo as model_zoo
 from packaging import version
@@ -329,7 +329,7 @@ def adjusted_classes(y_scores, t):
 PATH
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 input_folder = 'D:\CADSRAD-main\data'
-output_folder = 'D:\CADSRAD-main\output\cad0_2\ex1'
+output_folder = 'D:\CADSRAD-main\output\cad0_2\ex6'
 
 if not os.path.exists(input_folder):
     raise TypeError('no input path found %s' % input_folder)
@@ -359,14 +359,22 @@ for pp in range(len(img_data)):
 NORMALIZATION
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 img_data = np.float32(img_data)
-#img_data = img_data / 255.0
+# img_data = img_data / 255.0
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 HYPERPARAMETERS
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 batch_size = 4
 epochs = 600
-curr_lr = 1e-4
+curr_lr = 1e-3
 input_size = img_data[0].shape
+
+filters = 68
+kernel_size1 = 2
+stride_size = 2
+kernel_size2 = 5
+act = 'gelu'
+batch_norm_pos = 'after'
+blocks = 10
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 TRAINING 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -457,7 +465,18 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     MODEL
     """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     print('\nCreating and compiling model...')
-    model = model_zoo.model4(input_size=input_size)
+    model = model_zoo.model4(input_size=input_size, filters=filters, kernel_size1=kernel_size1, stride_size=stride_size,
+                             kernel_size2=kernel_size2, act=act, batch=batch_norm_pos, blocks=blocks)
+
+    print_txt(out_fold, ['\n\nHyperParameters:'])
+    print_txt(out_fold, ['\nfilters %s' % filters])
+    print_txt(out_fold, ['\nkernel_size1 %s' % kernel_size1])
+    print_txt(out_fold, ['\nstride_size %s' % stride_size])
+    print_txt(out_fold, ['\nkernel_size2 %s' % kernel_size2])
+    print_txt(out_fold, ['\nact %s' % act])
+    print_txt(out_fold, ['\nbatch_norm_pos %s' % batch_norm_pos])
+    print_txt(out_fold, ['\nblocks %s' % blocks])
+    print_txt(out_fold, ['\nbatch_size %s\n' % batch_size])
 
     with open(out_file, "a") as text_file:
         # Pass the file handle in as a lambda function to make it callable
@@ -465,7 +484,7 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
 
     # opt = Adam(learning_rate=curr_lr)
     opt = SGD(learning_rate=curr_lr, momentum=0.9)
-    #opt = tfa.optimizers.AdamW(learning_rate=0.001, weight_decay=0.0001)
+    # opt = tfa.optimizers.AdamW(learning_rate=0.001, weight_decay=0.0001)
     model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
     print('Model prepared...')
     print('Start training...')
@@ -587,10 +606,10 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
     print_txt(out_fold, ['\nTest CAD class %s' % test_cad])
     test_img = test_img / 255.0
     cad_class = np.copy(test_cad)
-    #test_cad[test_cad < 3] = 0
+    # test_cad[test_cad < 3] = 0
     test_cad[test_cad > 0] = 1
-    #test_cad[test_cad <= 4] = 0
-    #test_cad[test_cad == 5] = 1
+    # test_cad[test_cad <= 4] = 0
+    # test_cad[test_cad == 5] = 1
     ''
     print_txt(out_fold, ['\nTest binary CAD class %s' % test_cad])
     print('Loading saved weights...')
@@ -724,7 +743,6 @@ for data in train_test_split(img_data, cad_data, paz_data, ramo_data):
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 EVALUATE MEAN PERFORMANCE
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
 mean_ppv = np.mean(PPV)
 mean_npv = np.mean(NPV)
 mean_acc = np.mean(ACC)
@@ -751,6 +769,8 @@ infer_rec = round(mean_rec - (round(stats.t.ppf(1 - 0.025, len(RECALL) - 1), 3) 
 upper_rec = round(mean_rec + (round(stats.t.ppf(1 - 0.025, len(RECALL) - 1), 3) * std_rec / np.sqrt(len(RECALL))), 4)
 infer_auc = round(mean_auc - (round(stats.t.ppf(1 - 0.025, len(AUC) - 1), 3) * std_auc / np.sqrt(len(AUC))), 4)
 upper_auc = round(mean_auc + (round(stats.t.ppf(1 - 0.025, len(AUC) - 1), 3) * std_auc / np.sqrt(len(AUC))), 4)
+if upper_auc > 1:
+    upper_auc = 1.0
 
 print("Mean PPV = %0.2f (CI %0.2f-%0.2f)" % (mean_ppv, infer_ppv, upper_ppv))
 print("Mean NPV = %0.2f (CI %0.2f-%0.2f)" % (mean_npv, infer_npv, upper_npv))
